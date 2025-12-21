@@ -4,12 +4,17 @@ import { appDataDir, join } from '@tauri-apps/api/path'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import { AppProvider, useApp } from './contexts/AppContext'
+import { ThemeProvider } from './contexts/ThemeContext'
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useTauriCommands } from './hooks/useTauriCommands'
+import { useHistory } from './hooks/useHistory'
+import { Header } from './components/Header'
 import { DestButton } from './components/DestButton'
 import { ImageViewer } from './components/ImageViewer'
 import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
+import { SettingsModal } from './components/SettingsModal'
 import type { Settings } from './types'
 
 // ファイルシステム変更イベントの型
@@ -20,10 +25,13 @@ interface FsChangeEvent {
 
 function AppContent() {
   const { state, dispatch } = useApp()
-  const { scanImages, moveFile, loadSettings, saveSettings, startWatching, stopWatching } = useTauriCommands()
+  const { t } = useLanguage()
+  const { scanImages, moveFile, undoMove, loadSettings, saveSettings, startWatching } = useTauriCommands()
+  const { addToHistory, undo, redo, canUndo, canRedo } = useHistory()
   const configPathRef = useRef<string | null>(null)
   const isInitializedRef = useRef(false)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const settingsRef = useRef<Settings | null>(null)
   const unlistenRef = useRef<UnlistenFn | null>(null)
 
@@ -106,7 +114,7 @@ function AppContent() {
       dispatch({ type: 'SET_SOURCE_FOLDER', payload: selected as string })
       dispatch({
         type: 'SET_STATUS',
-        payload: { status: 'loading', message: 'スキャン中...' },
+        payload: { status: 'loading', message: t('status.scanning') },
       })
 
       try {
@@ -120,17 +128,17 @@ function AppContent() {
           type: 'SET_STATUS',
           payload: {
             status: 'idle',
-            message: `${images.length}枚の画像を読み込みました`,
+            message: t('status.imagesLoaded', { count: images.length }),
           },
         })
       } catch (error) {
         dispatch({
           type: 'SET_STATUS',
-          payload: { status: 'error', message: `エラー: ${error}` },
+          payload: { status: 'error', message: t('status.error', { error: String(error) }) },
         })
       }
     }
-  }, [dispatch, scanImages, startWatching])
+  }, [dispatch, scanImages, startWatching, t])
 
   const handleSelectDestination = useCallback(
     async (key: string) => {
@@ -151,7 +159,7 @@ function AppContent() {
 
   const handleMove = useCallback(
     async (key: string) => {
-      if (!currentImage) return
+      if (!currentImage || !state.sourceFolder) return
 
       const destination = state.destinations[key]
       if (!destination) {
@@ -159,27 +167,33 @@ function AppContent() {
           type: 'SET_STATUS',
           payload: {
             status: 'error',
-            message: `分別先${key}が設定されていません`,
+            message: t('status.destNotSet', { key }),
           },
         })
         return
       }
 
+      const sourcePath = currentImage.path
+      const sourceFolder = state.sourceFolder
+
       try {
-        await moveFile(currentImage.path, destination)
+        const destPath = await moveFile(sourcePath, destination)
+        // 履歴に追加
+        addToHistory({ sourcePath, sourceFolder, destPath })
         dispatch({ type: 'REMOVE_CURRENT_IMAGE' })
+        dispatch({ type: 'SET_LAST_USED_DESTINATION', payload: key })
         dispatch({
           type: 'SET_STATUS',
-          payload: { status: 'success', message: 'ファイルを移動しました' },
+          payload: { status: 'success', message: t('status.fileMoved') },
         })
       } catch (error) {
         dispatch({
           type: 'SET_STATUS',
-          payload: { status: 'error', message: `移動エラー: ${error}` },
+          payload: { status: 'error', message: t('status.moveError', { error: String(error) }) },
         })
       }
     },
-    [state.destinations, currentImage, moveFile, dispatch]
+    [state.destinations, state.sourceFolder, currentImage, moveFile, dispatch, t, addToHistory]
   )
 
   const handleNavigate = useCallback(
@@ -225,7 +239,7 @@ function AppContent() {
             dispatch({ type: 'SET_SOURCE_FOLDER', payload: folderPath })
             dispatch({
               type: 'SET_STATUS',
-              payload: { status: 'loading', message: 'スキャン中...' },
+              payload: { status: 'loading', message: t('status.scanning') },
             })
 
             try {
@@ -239,20 +253,20 @@ function AppContent() {
                 type: 'SET_STATUS',
                 payload: {
                   status: 'idle',
-                  message: `${images.length}枚の画像を読み込みました`,
+                  message: t('status.imagesLoaded', { count: images.length }),
                 },
               })
             } catch (error) {
               dispatch({
                 type: 'SET_STATUS',
-                payload: { status: 'error', message: `エラー: ${error}` },
+                payload: { status: 'error', message: t('status.error', { error: String(error) }) },
               })
             }
           }
         }
       }
     },
-    [dispatch, scanImages, startWatching]
+    [dispatch, scanImages, startWatching, t]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -262,6 +276,14 @@ function AppContent() {
 
   const handleCloseWelcome = useCallback(() => {
     setShowWelcome(false)
+  }, [])
+
+  const handleOpenSettings = useCallback(() => {
+    setShowSettings(true)
+  }, [])
+
+  const handleCloseSettings = useCallback(() => {
+    setShowSettings(false)
   }, [])
 
   const handleDontShowWelcomeAgain = useCallback(async () => {
@@ -291,6 +313,7 @@ function AppContent() {
 
       unlistenRef.current = await listen<FsChangeEvent>('fs-change', async (event) => {
         const { type, path } = event.payload
+        const fileName = path.split('/').pop() || ''
 
         if (type === 'Created') {
           // ファイルが追加された場合、画像リストを再スキャン
@@ -302,7 +325,7 @@ function AppContent() {
                 type: 'SET_STATUS',
                 payload: {
                   status: 'idle',
-                  message: `ファイル追加検知: ${path.split('/').pop()}`,
+                  message: t('status.fileAdded', { name: fileName }),
                 },
               })
             } catch {
@@ -318,7 +341,7 @@ function AppContent() {
               type: 'SET_STATUS',
               payload: {
                 status: 'idle',
-                message: `ファイル削除検知: ${path.split('/').pop()}`,
+                message: t('status.fileRemoved', { name: fileName }),
               },
             })
           }
@@ -333,7 +356,7 @@ function AppContent() {
         unlistenRef.current()
       }
     }
-  }, [state.sourceFolder, state.images, scanImages, dispatch])
+  }, [state.sourceFolder, state.images, scanImages, dispatch, t])
 
   // ウィンドウ状態保存（終了時）
   useEffect(() => {
@@ -375,7 +398,67 @@ function AppContent() {
     }
   }, [state.destinations, saveSettings])
 
-  useKeyboard({ onMove: handleMove, onNavigate: handleNavigate, onToggleFullscreen: handleToggleFullscreen })
+  const handleUndo = useCallback(async () => {
+    if (!canUndo) return
+
+    const item = undo()
+    if (!item) return
+
+    try {
+      await undoMove(item.destPath, item.sourceFolder)
+      // ソースフォルダを再スキャン
+      if (state.sourceFolder) {
+        const images = await scanImages(state.sourceFolder)
+        dispatch({ type: 'SET_IMAGES', payload: images })
+      }
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'success', message: t('status.undone') },
+      })
+    } catch (error) {
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'error', message: t('status.undoError', { error: String(error) }) },
+      })
+    }
+  }, [canUndo, undo, undoMove, state.sourceFolder, scanImages, dispatch, t])
+
+  const handleRedo = useCallback(async () => {
+    if (!canRedo) return
+
+    const item = redo()
+    if (!item) return
+
+    // Redo: ファイルを再度移動（sourcePath はファイルのフルパス）
+    try {
+      // destPath からフォルダ部分を抽出（クロスプラットフォーム対応）
+      const destFolder = item.destPath.replace(/[\\/][^\\/]+$/, '')
+      await moveFile(item.sourcePath, destFolder)
+      // ソースフォルダを再スキャン
+      if (state.sourceFolder) {
+        const images = await scanImages(state.sourceFolder)
+        dispatch({ type: 'SET_IMAGES', payload: images })
+      }
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'success', message: t('status.redone') },
+      })
+    } catch (error) {
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'error', message: t('status.redoError', { error: String(error) }) },
+      })
+    }
+  }, [canRedo, redo, moveFile, state.sourceFolder, scanImages, dispatch, t])
+
+  useKeyboard({
+    onMove: handleMove,
+    onNavigate: handleNavigate,
+    onToggleFullscreen: handleToggleFullscreen,
+    onOpenSettings: handleOpenSettings,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+  })
 
   const displayIndex = state.images.length > 0 ? state.currentIndex + 1 : 0
 
@@ -386,12 +469,21 @@ function AppContent() {
         onClose={handleCloseWelcome}
         onDontShowAgain={handleDontShowWelcomeAgain}
       />
-      <header className="app-header">
-        <h1>picSort</h1>
-        <button onClick={handleSelectFolder} className="btn-select-folder">
-          フォルダを選択
-        </button>
-      </header>
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={handleCloseSettings}
+        destinations={state.destinations}
+      />
+      <Header
+        title="picSort"
+        sourcePath={state.sourceFolder}
+        onSelectFolder={handleSelectFolder}
+        onOpenSettings={handleOpenSettings}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+      />
 
       <main className="app-main">
         <ImageViewer
@@ -406,13 +498,13 @@ function AppContent() {
               onClick={() => handleNavigate('prev')}
               disabled={state.currentIndex === 0}
             >
-              前へ
+              {t('navigation.prev')}
             </button>
             <button
               onClick={() => handleNavigate('next')}
               disabled={state.currentIndex >= state.images.length - 1}
             >
-              次へ
+              {t('navigation.next')}
             </button>
           </div>
         )}
@@ -427,6 +519,7 @@ function AppContent() {
             onSelect={() => handleSelectDestination(key)}
             onClear={() => dispatch({ type: 'SET_DESTINATION', payload: { key, path: null } })}
             disabled={!currentImage}
+            lastUsed={state.lastUsedDestination === key}
           />
         ))}
       </aside>
@@ -445,9 +538,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   )
 }
 

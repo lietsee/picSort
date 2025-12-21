@@ -4,9 +4,19 @@ interface UseKeyboardOptions {
   onMove: (key: string) => void
   onNavigate: (direction: 'prev' | 'next') => void
   onToggleFullscreen?: () => void
+  onOpenSettings?: () => void
+  onUndo?: () => void
+  onRedo?: () => void
 }
 
-export function useKeyboard({ onMove, onNavigate, onToggleFullscreen }: UseKeyboardOptions) {
+export function useKeyboard({
+  onMove,
+  onNavigate,
+  onToggleFullscreen,
+  onOpenSettings,
+  onUndo,
+  onRedo,
+}: UseKeyboardOptions) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // 入力フィールドにフォーカスがある場合は無視
@@ -18,6 +28,34 @@ export function useKeyboard({ onMove, onNavigate, onToggleFullscreen }: UseKeybo
       }
 
       const key = event.key
+
+      // Cmd+, / Ctrl+,: 設定を開く
+      if (key === ',' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault()
+        onOpenSettings?.()
+        return
+      }
+
+      // Cmd+Z / Ctrl+Z: Undo
+      if (key === 'z' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+        event.preventDefault()
+        onUndo?.()
+        return
+      }
+
+      // Cmd+Shift+Z / Ctrl+Shift+Z: Redo
+      if (key === 'z' && (event.metaKey || event.ctrlKey) && event.shiftKey) {
+        event.preventDefault()
+        onRedo?.()
+        return
+      }
+
+      // Ctrl+Y: Redo (Windows)
+      if (key === 'y' && event.ctrlKey) {
+        event.preventDefault()
+        onRedo?.()
+        return
+      }
 
       // 数字キー（1-5）: 仕分け（リピート無効）
       if (['1', '2', '3', '4', '5'].includes(key)) {
@@ -49,7 +87,7 @@ export function useKeyboard({ onMove, onNavigate, onToggleFullscreen }: UseKeybo
         return
       }
     },
-    [onMove, onNavigate, onToggleFullscreen]
+    [onMove, onNavigate, onToggleFullscreen, onOpenSettings, onUndo, onRedo]
   )
 
   useEffect(() => {

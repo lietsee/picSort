@@ -1,10 +1,15 @@
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info, warn};
+
+/// デバウンス時間（ミリ秒）
+const DEBOUNCE_MS: u64 = 500;
 
 /// ファイルシステム変更イベントの種類
 #[derive(Clone, serde::Serialize)]
@@ -13,6 +18,20 @@ pub enum FsChangeEvent {
     Created(String),
     Modified(String),
     Removed(String),
+}
+
+/// ペンディングイベント
+#[derive(Clone)]
+struct PendingEvent {
+    event_type: PendingEventType,
+    timestamp: Instant,
+}
+
+#[derive(Clone, PartialEq)]
+enum PendingEventType {
+    Created,
+    Modified,
+    Removed,
 }
 
 /// ウォッチャーの状態を管理
@@ -83,6 +102,10 @@ pub fn start_watching(
 
         debug!("ウォッチャースレッド開始");
 
+        // デバウンス用のペンディングイベント
+        let mut pending_events: HashMap<String, PendingEvent> = HashMap::new();
+        let debounce_duration = Duration::from_millis(DEBOUNCE_MS);
+
         loop {
             // 停止シグナルをチェック
             if stop_rx.try_recv().is_ok() {
@@ -91,9 +114,9 @@ pub fn start_watching(
             }
 
             // イベントを処理
-            match rx.recv_timeout(std::time::Duration::from_millis(100)) {
+            match rx.recv_timeout(Duration::from_millis(50)) {
                 Ok(Ok(event)) => {
-                    process_event(&app_handle, event);
+                    collect_event(&mut pending_events, event);
                 }
                 Ok(Err(e)) => {
                     warn!("ファイル監視エラー: {}", e);
@@ -106,6 +129,9 @@ pub fn start_watching(
                     break;
                 }
             }
+
+            // デバウンス済みイベントを発火
+            emit_debounced_events(&app_handle, &mut pending_events, debounce_duration);
         }
     });
 
@@ -133,8 +159,8 @@ pub fn stop_watching(state: tauri::State<'_, WatcherStateHandle>) -> Result<(), 
     Ok(())
 }
 
-/// イベントを処理してフロントエンドに通知
-fn process_event(app: &AppHandle, event: Event) {
+/// イベントをペンディングリストに追加
+fn collect_event(pending: &mut HashMap<String, PendingEvent>, event: Event) {
     use notify::EventKind;
 
     let paths: Vec<String> = event
@@ -157,31 +183,64 @@ fn process_event(app: &AppHandle, event: Event) {
         })
         .collect();
 
-    if image_paths.is_empty() {
-        return;
-    }
-
     for path in image_paths {
-        let change_event = match event.kind {
-            EventKind::Create(_) => {
-                info!("ファイル作成検知: {}", path);
-                Some(FsChangeEvent::Created(path))
-            }
-            EventKind::Modify(_) => {
-                debug!("ファイル変更検知: {}", path);
-                Some(FsChangeEvent::Modified(path))
-            }
-            EventKind::Remove(_) => {
-                info!("ファイル削除検知: {}", path);
-                Some(FsChangeEvent::Removed(path))
-            }
+        let event_type = match event.kind {
+            EventKind::Create(_) => Some(PendingEventType::Created),
+            EventKind::Modify(_) => Some(PendingEventType::Modified),
+            EventKind::Remove(_) => Some(PendingEventType::Removed),
             _ => None,
         };
 
-        if let Some(evt) = change_event {
-            if let Err(e) = app.emit("fs-change", evt) {
-                error!("イベント送信エラー: {}", e);
+        if let Some(evt_type) = event_type {
+            // 同じパスのイベントは上書き（最新のみ保持）
+            pending.insert(
+                path,
+                PendingEvent {
+                    event_type: evt_type,
+                    timestamp: Instant::now(),
+                },
+            );
+        }
+    }
+}
+
+/// デバウンス期間を過ぎたイベントを発火
+fn emit_debounced_events(
+    app: &AppHandle,
+    pending: &mut HashMap<String, PendingEvent>,
+    debounce_duration: Duration,
+) {
+    let now = Instant::now();
+    let mut to_emit = Vec::new();
+
+    // デバウンス期間を過ぎたイベントを収集
+    for (path, event) in pending.iter() {
+        if now.duration_since(event.timestamp) >= debounce_duration {
+            to_emit.push((path.clone(), event.clone()));
+        }
+    }
+
+    // イベントを発火して削除
+    for (path, event) in to_emit {
+        pending.remove(&path);
+
+        let change_event = match event.event_type {
+            PendingEventType::Created => {
+                info!("ファイル作成検知（デバウンス後）: {}", path);
+                FsChangeEvent::Created(path)
             }
+            PendingEventType::Modified => {
+                debug!("ファイル変更検知（デバウンス後）: {}", path);
+                FsChangeEvent::Modified(path)
+            }
+            PendingEventType::Removed => {
+                info!("ファイル削除検知（デバウンス後）: {}", path);
+                FsChangeEvent::Removed(path)
+            }
+        };
+
+        if let Err(e) = app.emit("fs-change", change_event) {
+            error!("イベント送信エラー: {}", e);
         }
     }
 }
@@ -195,5 +254,10 @@ mod tests {
         let state = WatcherState::default();
         assert!(state.sender.is_none());
         assert!(state.watching_path.is_none());
+    }
+
+    #[test]
+    fn test_debounce_constant() {
+        assert_eq!(DEBOUNCE_MS, 500);
     }
 }

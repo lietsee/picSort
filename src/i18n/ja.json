@@ -1,0 +1,76 @@
+{
+  "app": {
+    "title": "picSort"
+  },
+  "header": {
+    "selectFolder": "フォルダを選択",
+    "settings": "設定",
+    "undo": "元に戻す",
+    "redo": "やり直す"
+  },
+  "imageViewer": {
+    "noImages": "画像がありません",
+    "loading": "読み込み中...",
+    "dropHint": "フォルダをドロップまたは「フォルダを選択」をクリック"
+  },
+  "navigation": {
+    "prev": "前へ",
+    "next": "次へ"
+  },
+  "destButton": {
+    "notSet": "未設定",
+    "rightClickToClear": "右クリックで設定解除",
+    "clickToSelect": "クリックしてフォルダを選択"
+  },
+  "status": {
+    "scanning": "スキャン中...",
+    "imagesLoaded": "{{count}}枚の画像を読み込みました",
+    "fileMoved": "ファイルを移動しました",
+    "moveError": "移動エラー: {{error}}",
+    "error": "エラー: {{error}}",
+    "destNotSet": "分別先{{key}}が設定されていません",
+    "fileAdded": "ファイル追加検知: {{name}}",
+    "fileRemoved": "ファイル削除検知: {{name}}",
+    "undone": "元に戻しました",
+    "undoError": "元に戻せませんでした: {{error}}",
+    "redone": "やり直しました",
+    "redoError": "やり直せませんでした: {{error}}"
+  },
+  "settings": {
+    "title": "設定",
+    "appearance": "外観",
+    "theme": "テーマ",
+    "themeSystem": "システム設定に従う",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "language": "言語",
+    "destinations": "分別先フォルダ",
+    "destinationHint": "右クリックで設定を解除できます",
+    "shortcuts": "キーボードショートカット",
+    "close": "閉じる"
+  },
+  "shortcuts": {
+    "moveToDestination": "対応する分別先へ移動",
+    "prevImage": "前の画像",
+    "nextImage": "次の画像",
+    "toggleFullscreen": "フルスクリーン切替",
+    "openSettings": "設定を開く"
+  },
+  "welcome": {
+    "title": "picSort へようこそ",
+    "basicUsage": "基本操作",
+    "basicStep1": "フォルダを選択 または ドラッグ＆ドロップ で画像を読み込み",
+    "basicStep2": "1〜5 キーまたはサイドバーのボタンで分別先フォルダを設定",
+    "basicStep3": "設定後、同じキーを押すと画像を移動",
+    "keyboardShortcuts": "キーボードショートカット",
+    "shortcut1_5": "分別先に移動",
+    "shortcutPrev": "前の画像",
+    "shortcutNext": "次の画像",
+    "shortcutFullscreen": "フルスクリーン切替",
+    "tips": "ヒント",
+    "tipRightClick": "分別先ボタンを 右クリック で設定解除",
+    "tipAutoSave": "設定は自動保存されます",
+    "dontShowAgain": "次回から表示しない",
+    "start": "始める"
+  }
+}

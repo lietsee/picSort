@@ -1,12 +1,17 @@
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 use tracing::{debug, error, info};
 
 #[derive(Debug, Serialize)]
 pub struct ImageInfo {
     pub path: String,
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size: Option<u64>,
+    #[serde(rename = "modifiedAt", skip_serializing_if = "Option::is_none")]
+    pub modified_at: Option<i64>,
 }
 
 const SUPPORTED_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp"];
@@ -66,6 +71,34 @@ pub fn move_file(src: String, dest_folder: String) -> Result<String, String> {
     Ok(dest_path)
 }
 
+/// ファイル移動を元に戻す
+#[tauri::command]
+pub fn undo_move(current_path: String, original_folder: String) -> Result<String, String> {
+    debug!("Undo移動開始: {} -> {}", current_path, original_folder);
+
+    let src_path = Path::new(&current_path);
+    if !src_path.exists() {
+        error!("Undoファイルが見つかりません: {}", current_path);
+        return Err(format!("File not found: {}", current_path));
+    }
+
+    let file_name = src_path
+        .file_name()
+        .ok_or("Invalid file name")?
+        .to_string_lossy()
+        .to_string();
+
+    let dest_path = generate_unique_path(&original_folder, &file_name)?;
+
+    fs::rename(&current_path, &dest_path).map_err(|e| {
+        error!("Undo移動エラー: {} -> {}: {}", current_path, dest_path, e);
+        e.to_string()
+    })?;
+
+    info!("Undo移動完了: {} -> {}", current_path, dest_path);
+    Ok(dest_path)
+}
+
 /// 指定フォルダ内の画像ファイルをスキャンして返す
 #[tauri::command]
 pub fn scan_images(path: String) -> Result<Vec<ImageInfo>, String> {
@@ -102,9 +135,25 @@ pub fn scan_images(path: String) -> Result<Vec<ImageInfo>, String> {
         if let Some(ext) = file_path.extension() {
             let ext_lower = ext.to_string_lossy().to_lowercase();
             if SUPPORTED_EXTENSIONS.contains(&ext_lower.as_str()) {
+                // メタデータを取得
+                let (size, modified_at) = match fs::metadata(&file_path) {
+                    Ok(meta) => {
+                        let size = Some(meta.len());
+                        let modified_at = meta.modified().ok().and_then(|t| {
+                            t.duration_since(UNIX_EPOCH)
+                                .ok()
+                                .map(|d| d.as_secs() as i64)
+                        });
+                        (size, modified_at)
+                    }
+                    Err(_) => (None, None),
+                };
+
                 images.push(ImageInfo {
                     path: file_path.to_string_lossy().to_string(),
                     name: file_name,
+                    size,
+                    modified_at,
                 });
             }
         }

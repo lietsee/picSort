@@ -2,7 +2,7 @@ interface StatusBarProps {
   current: number
   total: number
   message: string
-  status?: 'idle' | 'loading' | 'success' | 'error'
+  status?: 'idle' | 'loading' | 'success' | 'error' | 'warning'
 }
 
 export function StatusBar({
@@ -11,15 +11,21 @@ export function StatusBar({
   message,
   status = 'idle',
 }: StatusBarProps) {
-  const statusClass =
-    status === 'error'
-      ? 'status-error'
-      : status === 'success'
-        ? 'status-success'
-        : ''
+  const getStatusClass = () => {
+    switch (status) {
+      case 'error':
+        return 'status-error'
+      case 'success':
+        return 'status-success'
+      case 'warning':
+        return 'status-warning'
+      default:
+        return ''
+    }
+  }
 
   return (
-    <div className={`status-bar ${statusClass}`} data-testid="status-bar">
+    <div className={`status-bar ${getStatusClass()}`} data-testid="status-bar">
       <span className="status-counter">
         {current} / {total}
       </span>

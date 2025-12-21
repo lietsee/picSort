@@ -1,3 +1,5 @@
+import { useLanguage } from '../contexts/LanguageContext'
+
 interface WelcomeModalProps {
   isOpen: boolean
   onClose: () => void
@@ -5,6 +7,8 @@ interface WelcomeModalProps {
 }
 
 export function WelcomeModal({ isOpen, onClose, onDontShowAgain }: WelcomeModalProps) {
+  const { t } = useLanguage()
+
   if (!isOpen) return null
 
   const handleDontShowAgain = () => {
@@ -15,37 +19,37 @@ export function WelcomeModal({ isOpen, onClose, onDontShowAgain }: WelcomeModalP
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>picSort へようこそ</h2>
+        <h2>{t('welcome.title')}</h2>
 
         <div className="welcome-instructions">
-          <h3>基本操作</h3>
+          <h3>{t('welcome.basicUsage')}</h3>
           <ul>
-            <li><strong>フォルダを選択</strong> または <strong>ドラッグ＆ドロップ</strong> で画像を読み込み</li>
-            <li><strong>1〜5</strong> キーまたはサイドバーのボタンで分別先フォルダを設定</li>
-            <li>設定後、同じキーを押すと画像を移動</li>
+            <li>{t('welcome.basicStep1')}</li>
+            <li>{t('welcome.basicStep2')}</li>
+            <li>{t('welcome.basicStep3')}</li>
           </ul>
 
-          <h3>キーボードショートカット</h3>
+          <h3>{t('welcome.keyboardShortcuts')}</h3>
           <ul>
-            <li><strong>1-5</strong>: 分別先に移動</li>
-            <li><strong>← / A / Backspace</strong>: 前の画像</li>
-            <li><strong>→ / D / Space</strong>: 次の画像</li>
-            <li><strong>F</strong>: フルスクリーン切替</li>
+            <li><strong>1-5</strong>: {t('welcome.shortcut1_5')}</li>
+            <li><strong>← / A / Backspace</strong>: {t('welcome.shortcutPrev')}</li>
+            <li><strong>→ / D / Space</strong>: {t('welcome.shortcutNext')}</li>
+            <li><strong>F</strong>: {t('welcome.shortcutFullscreen')}</li>
           </ul>
 
-          <h3>ヒント</h3>
+          <h3>{t('welcome.tips')}</h3>
           <ul>
-            <li>分別先ボタンを <strong>右クリック</strong> で設定解除</li>
-            <li>設定は自動保存されます</li>
+            <li>{t('welcome.tipRightClick')}</li>
+            <li>{t('welcome.tipAutoSave')}</li>
           </ul>
         </div>
 
         <div className="modal-actions">
           <button onClick={handleDontShowAgain} className="btn-secondary">
-            次回から表示しない
+            {t('welcome.dontShowAgain')}
           </button>
           <button onClick={onClose} className="btn-primary">
-            始める
+            {t('welcome.start')}
           </button>
         </div>
       </div>

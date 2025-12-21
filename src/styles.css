@@ -5,6 +5,7 @@
   --text-secondary: #a0a0a0;
   --accent: #4a9eff;
   --success: #4caf50;
+  --warning: #ff9800;
   --error: #f44336;
   --border: #404040;
 }
@@ -40,9 +41,60 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  overflow: hidden;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.header-history-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--text-primary);
+  transition: background-color 0.15s;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background-color: var(--border);
+}
+
+.btn-icon:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .app-header h1 {
   font-size: 1.5rem;
   font-weight: 600;
+  flex-shrink: 0;
+}
+
+.header-path {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn-select-folder {
@@ -53,10 +105,30 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+  flex-shrink: 0;
 }
 
 .btn-select-folder:hover {
   opacity: 0.9;
+}
+
+.btn-settings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.btn-settings:hover {
+  background-color: var(--border);
 }
 
 .app-main {
@@ -154,6 +226,16 @@ body {
   background-color: rgba(74, 158, 255, 0.1);
 }
 
+.dest-button.last-used {
+  border-color: var(--success);
+}
+
+.dest-button-indicator {
+  color: var(--success);
+  font-size: 0.5rem;
+  margin-left: auto;
+}
+
 .dest-button-key {
   display: flex;
   align-items: center;
@@ -194,6 +276,10 @@ body {
 
 .status-bar.status-error .status-message {
   color: var(--error);
+}
+
+.status-bar.status-warning .status-message {
+  color: var(--warning);
 }
 
 .status-counter {
@@ -300,4 +386,107 @@ body {
   --success: #16a34a;
   --error: #dc2626;
   --border: #e0e0e0;
+}
+
+/* Settings Modal */
+.settings-modal {
+  max-width: 550px;
+}
+
+.settings-section {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  color: var(--accent);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-select {
+  padding: 0.5rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  min-width: 180px;
+}
+
+.settings-destinations {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-dest-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background-color: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.settings-dest-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: var(--accent);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.settings-dest-path {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-hint {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.settings-keybindings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-keybind-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-key {
+  display: inline-block;
+  min-width: 100px;
+  padding: 0.25rem 0.5rem;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.settings-keybind-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }

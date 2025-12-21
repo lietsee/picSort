@@ -2,7 +2,7 @@ mod commands;
 mod config;
 mod logging;
 
-use commands::file_ops::{move_file, scan_images};
+use commands::file_ops::{move_file, scan_images, undo_move};
 use commands::watcher::{start_watching, stop_watching, WatcherStateHandle};
 use config::settings::{load_settings, save_settings};
 use logging::{get_log_path, init_logging};
@@ -24,6 +24,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_images,
             move_file,
+            undo_move,
             load_settings,
             save_settings,
             start_watching,

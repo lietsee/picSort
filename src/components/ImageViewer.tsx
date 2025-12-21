@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
+import { useLanguage } from '../contexts/LanguageContext'
 import type { ImageInfo } from '../types'
 
 interface ImageViewerProps {
@@ -9,6 +10,8 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ image, nextImage, loading = false }: ImageViewerProps) {
+  const { t } = useLanguage()
+
   // 次の画像を先読み
   useEffect(() => {
     if (nextImage) {
@@ -20,7 +23,7 @@ export function ImageViewer({ image, nextImage, loading = false }: ImageViewerPr
   if (loading) {
     return (
       <div className="image-viewer image-viewer-loading">
-        <span>読み込み中...</span>
+        <span>{t('imageViewer.loading')}</span>
       </div>
     )
   }
@@ -28,7 +31,7 @@ export function ImageViewer({ image, nextImage, loading = false }: ImageViewerPr
   if (!image) {
     return (
       <div className="image-viewer image-viewer-empty">
-        <span>画像がありません</span>
+        <span>{t('imageViewer.noImages')}</span>
       </div>
     )
   }

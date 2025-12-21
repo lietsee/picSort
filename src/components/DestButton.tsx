@@ -1,3 +1,5 @@
+import { useLanguage } from '../contexts/LanguageContext'
+
 interface DestButtonProps {
   keyNum: string
   path: string | null
@@ -5,6 +7,7 @@ interface DestButtonProps {
   onClear?: () => void
   disabled?: boolean
   active?: boolean
+  lastUsed?: boolean
 }
 
 export function DestButton({
@@ -14,8 +17,10 @@ export function DestButton({
   onClear,
   disabled = false,
   active = false,
+  lastUsed = false,
 }: DestButtonProps) {
-  const folderName = path ? path.split('/').pop() : '未設定'
+  const { t } = useLanguage()
+  const folderName = path ? path.split('/').pop() : t('destButton.notSet')
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -24,16 +29,27 @@ export function DestButton({
     }
   }
 
+  // クラス名を構築
+  const classNames = ['dest-button']
+  if (active) classNames.push('active')
+  if (lastUsed) classNames.push('last-used')
+
+  // ツールチップテキスト
+  const tooltip = path
+    ? `${path}\n(${t('destButton.rightClickToClear')})`
+    : t('destButton.clickToSelect')
+
   return (
     <button
       onClick={onSelect}
       onContextMenu={handleContextMenu}
       disabled={disabled}
-      className={`dest-button ${active ? 'active' : ''}`}
-      title={path ? '右クリックで設定解除' : 'クリックしてフォルダを選択'}
+      className={classNames.join(' ')}
+      title={tooltip}
     >
       <span className="dest-button-key">{keyNum}</span>
       <span className="dest-button-name">{folderName}</span>
+      {lastUsed && <span className="dest-button-indicator">●</span>}
     </button>
   )
 }

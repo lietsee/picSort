@@ -10,6 +10,10 @@ export function useTauriCommands() {
     return await invoke<string>('move_file', { src, destFolder })
   }
 
+  const undoMove = async (currentPath: string, originalFolder: string): Promise<string> => {
+    return await invoke<string>('undo_move', { currentPath, originalFolder })
+  }
+
   const loadSettings = async (configPath: string): Promise<Settings> => {
     return await invoke<Settings>('load_settings', { configPath })
   }
@@ -36,6 +40,7 @@ export function useTauriCommands() {
   return {
     scanImages,
     moveFile,
+    undoMove,
     loadSettings,
     saveSettings,
     startWatching,

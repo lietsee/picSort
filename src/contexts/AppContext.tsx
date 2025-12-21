@@ -6,6 +6,7 @@ const initialState: AppState = {
   images: [],
   currentIndex: 0,
   destinations: { '1': null, '2': null, '3': null, '4': null, '5': null },
+  lastUsedDestination: null,
   status: 'idle',
   statusMessage: '',
 }
@@ -50,6 +51,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
           ...state.destinations,
           [action.payload.key]: action.payload.path,
         },
+      }
+
+    case 'SET_LAST_USED_DESTINATION':
+      return {
+        ...state,
+        lastUsedDestination: action.payload,
       }
 
     case 'SET_STATUS':
