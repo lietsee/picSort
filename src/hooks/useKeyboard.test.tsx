@@ -10,10 +10,12 @@ describe('useKeyboard', () => {
 
   let mockOnMove: (key: string) => void
   let mockOnNavigate: (direction: 'prev' | 'next') => void
+  let mockOnToggleFullscreen: () => void
 
   beforeEach(() => {
     mockOnMove = vi.fn()
     mockOnNavigate = vi.fn()
+    mockOnToggleFullscreen = vi.fn()
   })
 
   afterEach(() => {
@@ -65,13 +67,53 @@ describe('useKeyboard', () => {
     expect(mockOnNavigate).toHaveBeenCalledWith('next')
   })
 
+  it('A/Dキーでナビゲーションが呼ばれる', () => {
+    renderHook(
+      () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
+      { wrapper }
+    )
+
+    // Aキーで前へ
+    const eventA = new KeyboardEvent('keydown', { key: 'a' })
+    window.dispatchEvent(eventA)
+    expect(mockOnNavigate).toHaveBeenCalledWith('prev')
+
+    // Dキーで次へ
+    const eventD = new KeyboardEvent('keydown', { key: 'd' })
+    window.dispatchEvent(eventD)
+    expect(mockOnNavigate).toHaveBeenCalledWith('next')
+  })
+
+  it('Backspaceで前の画像に移動する', () => {
+    renderHook(
+      () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
+      { wrapper }
+    )
+
+    const event = new KeyboardEvent('keydown', { key: 'Backspace' })
+    window.dispatchEvent(event)
+    expect(mockOnNavigate).toHaveBeenCalledWith('prev')
+  })
+
+  it('数字キーのリピートは無視される', () => {
+    renderHook(
+      () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
+      { wrapper }
+    )
+
+    // リピートイベント
+    const event = new KeyboardEvent('keydown', { key: '1', repeat: true })
+    window.dispatchEvent(event)
+    expect(mockOnMove).not.toHaveBeenCalled()
+  })
+
   it('無関係なキーでは何も呼ばれない', () => {
     renderHook(
       () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
       { wrapper }
     )
 
-    const event = new KeyboardEvent('keydown', { key: 'a' })
+    const event = new KeyboardEvent('keydown', { key: 'x' })
     window.dispatchEvent(event)
     expect(mockOnMove).not.toHaveBeenCalled()
     expect(mockOnNavigate).not.toHaveBeenCalled()
@@ -88,5 +130,33 @@ describe('useKeyboard', () => {
     const event = new KeyboardEvent('keydown', { key: '1' })
     window.dispatchEvent(event)
     expect(mockOnMove).not.toHaveBeenCalled()
+  })
+
+  it('Fキーでフルスクリーン切替が呼ばれる', () => {
+    renderHook(
+      () => useKeyboard({
+        onMove: mockOnMove,
+        onNavigate: mockOnNavigate,
+        onToggleFullscreen: mockOnToggleFullscreen
+      }),
+      { wrapper }
+    )
+
+    const event = new KeyboardEvent('keydown', { key: 'f' })
+    window.dispatchEvent(event)
+    expect(mockOnToggleFullscreen).toHaveBeenCalled()
+  })
+
+  it('onToggleFullscreenが未設定の場合Fキーで何も起きない', () => {
+    renderHook(
+      () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
+      { wrapper }
+    )
+
+    const event = new KeyboardEvent('keydown', { key: 'f' })
+    window.dispatchEvent(event)
+    // エラーが発生しないことを確認
+    expect(mockOnMove).not.toHaveBeenCalled()
+    expect(mockOnNavigate).not.toHaveBeenCalled()
   })
 })

@@ -55,4 +55,36 @@ describe('DestButton', () => {
     const button = screen.getByRole('button')
     expect(button).toHaveClass('active')
   })
+
+  it('右クリックでonClearが呼ばれる（パスが設定されている場合）', () => {
+    const onClear = vi.fn()
+    render(
+      <DestButton
+        keyNum="1"
+        path="/Users/test/Documents"
+        onSelect={() => {}}
+        onClear={onClear}
+      />
+    )
+
+    const button = screen.getByRole('button')
+    fireEvent.contextMenu(button)
+    expect(onClear).toHaveBeenCalledTimes(1)
+  })
+
+  it('パスが未設定の場合、右クリックでonClearが呼ばれない', () => {
+    const onClear = vi.fn()
+    render(
+      <DestButton
+        keyNum="1"
+        path={null}
+        onSelect={() => {}}
+        onClear={onClear}
+      />
+    )
+
+    const button = screen.getByRole('button')
+    fireEvent.contextMenu(button)
+    expect(onClear).not.toHaveBeenCalled()
+  })
 })

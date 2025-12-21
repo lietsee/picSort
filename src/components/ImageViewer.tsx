@@ -1,12 +1,22 @@
+import { useEffect } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import type { ImageInfo } from '../types'
 
 interface ImageViewerProps {
   image: ImageInfo | null
+  nextImage?: ImageInfo | null
   loading?: boolean
 }
 
-export function ImageViewer({ image, loading = false }: ImageViewerProps) {
+export function ImageViewer({ image, nextImage, loading = false }: ImageViewerProps) {
+  // 次の画像を先読み
+  useEffect(() => {
+    if (nextImage) {
+      const img = new Image()
+      img.src = convertFileSrc(nextImage.path)
+    }
+  }, [nextImage])
+
   if (loading) {
     return (
       <div className="image-viewer image-viewer-loading">

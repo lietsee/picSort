@@ -9,9 +9,30 @@ vi.mock('@tauri-apps/api/core', () => {
   }
 })
 
+// Tauri Path APIのモック
+vi.mock('@tauri-apps/api/path', () => {
+  return {
+    appDataDir: vi.fn(() => Promise.resolve('/mock/app/data')),
+    join: vi.fn((...paths: string[]) => Promise.resolve(paths.join('/'))),
+  }
+})
+
 // Tauri Dialog プラグインのモック
 vi.mock('@tauri-apps/plugin-dialog', () => {
   return {
     open: vi.fn(),
+  }
+})
+
+// Tauri Window APIのモック
+vi.mock('@tauri-apps/api/window', () => {
+  const mockWindow = {
+    isFullscreen: vi.fn(() => Promise.resolve(false)),
+    setFullscreen: vi.fn(() => Promise.resolve()),
+    innerSize: vi.fn(() => Promise.resolve({ width: 1280, height: 800 })),
+    outerPosition: vi.fn(() => Promise.resolve({ x: 100, y: 100 })),
+  }
+  return {
+    getCurrentWindow: vi.fn(() => mockWindow),
   }
 })

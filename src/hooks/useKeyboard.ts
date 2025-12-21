@@ -3,9 +3,10 @@ import { useEffect, useCallback } from 'react'
 interface UseKeyboardOptions {
   onMove: (key: string) => void
   onNavigate: (direction: 'prev' | 'next') => void
+  onToggleFullscreen?: () => void
 }
 
-export function useKeyboard({ onMove, onNavigate }: UseKeyboardOptions) {
+export function useKeyboard({ onMove, onNavigate, onToggleFullscreen }: UseKeyboardOptions) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       // 入力フィールドにフォーカスがある場合は無視
@@ -18,24 +19,37 @@ export function useKeyboard({ onMove, onNavigate }: UseKeyboardOptions) {
 
       const key = event.key
 
-      // 数字キー（1-5）: 仕分け
+      // 数字キー（1-5）: 仕分け（リピート無効）
       if (['1', '2', '3', '4', '5'].includes(key)) {
+        if (event.repeat) return // キーリピート無効
         onMove(key)
         return
       }
 
-      // 矢印キー・スペース: 画像移動
-      if (key === 'ArrowLeft') {
+      // 矢印キー・A/D・スペース・Backspace: 画像移動
+      if (key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'Backspace') {
         onNavigate('prev')
         return
       }
 
-      if (key === 'ArrowRight' || key === ' ') {
+      if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === ' ') {
         onNavigate('next')
         return
       }
+
+      // F キー: フルスクリーン切替
+      if ((key === 'f' || key === 'F') && onToggleFullscreen) {
+        onToggleFullscreen()
+        return
+      }
+
+      // Escape: フルスクリーン解除（ブラウザ標準で処理されるため不要だが明示的に対応）
+      if (key === 'Escape' && onToggleFullscreen) {
+        // Escapeはフルスクリーン解除のみ（ブラウザが処理）
+        return
+      }
     },
-    [onMove, onNavigate]
+    [onMove, onNavigate, onToggleFullscreen]
   )
 
   useEffect(() => {

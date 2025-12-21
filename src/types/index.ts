@@ -7,6 +7,13 @@ export interface Settings {
   destinations: Record<string, string | null>
   theme: 'system' | 'light' | 'dark'
   language: 'ja' | 'en'
+  showWelcome?: boolean
+  window?: {
+    width: number
+    height: number
+    x: number | null
+    y: number | null
+  }
 }
 
 export type Status = 'idle' | 'loading' | 'success' | 'error'
