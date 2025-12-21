@@ -27,6 +27,42 @@ graph TD
 | 統合テスト | Tauri IPC | Vitest | 60% |
 | E2Eテスト | アプリ全体 | Playwright + Tauri Driver | 主要フロー100% |
 
+### 1.3 テストツール詳細
+
+| カテゴリ | ツール | バージョン | 用途 |
+|---------|--------|-----------|------|
+| Reactユニットテスト | Vitest | 1.2+ | コンポーネント・Hooksテスト |
+| React DOM操作テスト | @testing-library/react | 14.1+ | DOM操作・ユーザーイベントテスト |
+| E2Eテスト | Playwright | 1.40+ | アプリ全体のフローテスト |
+| Rustテスト | cargo test | - | Rustコードのユニットテスト |
+| Rustカバレッジ | cargo-tarpaulin | - | Rustカバレッジ計測 |
+| テンポラリファイル | tempfile | 3.x | Rustテスト用一時ファイル |
+
+### 1.4 テスト実行コマンド
+
+```bash
+# Rustテスト
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# Rustカバレッジ
+cargo tarpaulin --manifest-path src-tauri/Cargo.toml --out Html
+
+# Reactテスト
+npm test
+
+# Reactテスト（ウォッチモード）
+npm run test:watch
+
+# Reactカバレッジ
+npm run test:coverage
+
+# E2Eテスト
+npm run test:e2e
+
+# 全テスト実行
+npm run test:all
+```
+
 ## 2. Rustユニットテスト
 
 ### 2.1 テスト対象
@@ -210,7 +246,86 @@ mod scan_tests {
 }
 ```
 
-### 2.4 テストケース：設定管理
+### 2.4 テストケース：ファイル監視
+
+```rust
+#[cfg(test)]
+mod watcher_tests {
+    use super::*;
+    use std::fs::File;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_detect_file_creation() {
+        let dir = tempdir().unwrap();
+        let mut watcher = FolderWatcher::new();
+
+        // 監視開始
+        watcher.watch(dir.path().to_str().unwrap(), mock_app_handle()).unwrap();
+
+        // ファイル作成
+        File::create(dir.path().join("new_image.jpg")).unwrap();
+
+        // イベント検知を待機（実際のテストでは非同期処理が必要）
+        std::thread::sleep(Duration::from_millis(600));
+
+        // イベントが発火したことを確認
+        // （モックで検証）
+    }
+
+    #[test]
+    fn test_detect_file_deletion() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("image.jpg");
+        File::create(&file_path).unwrap();
+
+        let mut watcher = FolderWatcher::new();
+        watcher.watch(dir.path().to_str().unwrap(), mock_app_handle()).unwrap();
+
+        // ファイル削除
+        std::fs::remove_file(&file_path).unwrap();
+
+        std::thread::sleep(Duration::from_millis(600));
+        // イベント検証
+    }
+
+    #[test]
+    fn test_debounce_multiple_events() {
+        let dir = tempdir().unwrap();
+        let mut watcher = FolderWatcher::new();
+        watcher.watch(dir.path().to_str().unwrap(), mock_app_handle()).unwrap();
+
+        // 短時間に複数ファイル作成
+        for i in 0..5 {
+            File::create(dir.path().join(format!("image{}.jpg", i))).unwrap();
+            std::thread::sleep(Duration::from_millis(50));
+        }
+
+        std::thread::sleep(Duration::from_millis(600));
+        // デバウンスにより1回のみ発火することを確認
+    }
+
+    #[test]
+    fn test_symlink_skipped() {
+        let dir = tempdir().unwrap();
+        let target = dir.path().join("target.jpg");
+        let link = dir.path().join("link.jpg");
+
+        File::create(&target).unwrap();
+
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        let result = scan_images(dir.path().to_string_lossy().to_string());
+
+        assert!(result.is_ok());
+        // シンボリックリンクはスキップされ、1ファイルのみ
+        assert_eq!(result.unwrap().len(), 1);
+    }
+}
+```
+
+### 2.5 テストケース：設定管理
 
 ```rust
 #[cfg(test)]
@@ -412,7 +527,173 @@ describe('ImageViewer', () => {
 });
 ```
 
-### 3.4 テストケース：useKeyboard
+### 3.4 テストケース：設定画面
+
+```typescript
+// src/components/Settings/Settings.test.tsx
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { Settings } from './Settings';
+import { AppProvider } from '../../contexts/AppContext';
+import { ThemeProvider } from '../../contexts/ThemeContext';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ThemeProvider>
+    <AppProvider>{children}</AppProvider>
+  </ThemeProvider>
+);
+
+describe('Settings', () => {
+  it('設定画面が表示される', () => {
+    render(<Settings isOpen={true} onClose={() => {}} />, { wrapper });
+
+    expect(screen.getByText('設定')).toBeInTheDocument();
+    expect(screen.getByText('外観')).toBeInTheDocument();
+    expect(screen.getByText('動作')).toBeInTheDocument();
+    expect(screen.getByText('分別先フォルダ')).toBeInTheDocument();
+  });
+
+  it('テーマ変更が即座に反映される', async () => {
+    const mockSaveSettings = vi.fn();
+    render(<Settings isOpen={true} onClose={() => {}} />, { wrapper });
+
+    const darkThemeRadio = screen.getByLabelText('ダーク');
+    fireEvent.click(darkThemeRadio);
+
+    await waitFor(() => {
+      expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    });
+  });
+
+  it('言語変更でUIが切り替わる', async () => {
+    render(<Settings isOpen={true} onClose={() => {}} />, { wrapper });
+
+    const languageSelect = screen.getByLabelText('言語');
+    fireEvent.change(languageSelect, { target: { value: 'en' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Settings')).toBeInTheDocument();
+    });
+  });
+
+  it('分別先フォルダの設定ができる', async () => {
+    const mockOpenDialog = vi.fn().mockResolvedValue('/path/to/folder');
+    render(<Settings isOpen={true} onClose={() => {}} />, { wrapper });
+
+    const setButton = screen.getAllByText('設定')[0];
+    fireEvent.click(setButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('/path/to/folder')).toBeInTheDocument();
+    });
+  });
+
+  it('分別先フォルダの解除ができる', async () => {
+    render(<Settings isOpen={true} onClose={() => {}} />, { wrapper });
+
+    const clearButton = screen.getByText('解除');
+    fireEvent.click(clearButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('未設定')).toBeInTheDocument();
+    });
+  });
+
+  it('閉じるボタンでモーダルが閉じる', () => {
+    const onClose = vi.fn();
+    render(<Settings isOpen={true} onClose={onClose} />, { wrapper });
+
+    const closeButton = screen.getByLabelText('閉じる');
+    fireEvent.click(closeButton);
+
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+```
+
+### 3.5 テストケース：初回ウィザード
+
+```typescript
+// src/components/Wizard/WelcomeWizard.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { WelcomeWizard } from './WelcomeWizard';
+import { AppProvider } from '../../contexts/AppContext';
+
+describe('WelcomeWizard', () => {
+  const mockOnComplete = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it('初回起動時に表示される', () => {
+    render(
+      <AppProvider>
+        <WelcomeWizard onComplete={mockOnComplete} />
+      </AppProvider>
+    );
+
+    expect(screen.getByText('ようこそ picSort へ')).toBeInTheDocument();
+    expect(screen.getByText('1〜5キーで画像を各フォルダに仕分けます')).toBeInTheDocument();
+  });
+
+  it('「始める」ボタンでウィザードが閉じる', () => {
+    render(
+      <AppProvider>
+        <WelcomeWizard onComplete={mockOnComplete} />
+      </AppProvider>
+    );
+
+    const startButton = screen.getByText('始める');
+    fireEvent.click(startButton);
+
+    expect(mockOnComplete).toHaveBeenCalled();
+  });
+
+  it('「次回から表示しない」チェックで設定が保存される', () => {
+    render(
+      <AppProvider>
+        <WelcomeWizard onComplete={mockOnComplete} />
+      </AppProvider>
+    );
+
+    const checkbox = screen.getByLabelText('次回から表示しない');
+    fireEvent.click(checkbox);
+
+    const startButton = screen.getByText('始める');
+    fireEvent.click(startButton);
+
+    expect(mockOnComplete).toHaveBeenCalledWith({ skipNextTime: true });
+  });
+
+  it('ESCキーでウィザードが閉じる', () => {
+    render(
+      <AppProvider>
+        <WelcomeWizard onComplete={mockOnComplete} />
+      </AppProvider>
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(mockOnComplete).toHaveBeenCalled();
+  });
+
+  it('wizardCompleted=trueの場合は表示されない', () => {
+    // 設定でwizardCompleted=trueの場合
+    const { container } = render(
+      <AppProvider initialSettings={{ wizardCompleted: true }}>
+        <WelcomeWizard onComplete={mockOnComplete} />
+      </AppProvider>
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+});
+```
+
+### 3.6 テストケース：useKeyboard
 
 ```typescript
 // src/hooks/useKeyboard.test.tsx

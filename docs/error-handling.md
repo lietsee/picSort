@@ -72,6 +72,10 @@ E-[カテゴリ]-[番号]
 | `E-IO-008` | DIRECTORY_NOT_EMPTY | ディレクトリが空ではありません | WARNING |
 | `E-IO-009` | RENAME_FAILED | ファイル名の変更に失敗しました | ERROR |
 | `E-IO-010` | COPY_FAILED | ファイルのコピーに失敗しました | ERROR |
+| `E-IO-011` | SYMLINK_SKIPPED | シンボリックリンクをスキップしました | INFO |
+| `E-IO-012` | NETWORK_DRIVE_WARNING | ネットワークドライブは速度が低下する可能性があります | WARNING |
+| `E-IO-013` | WATCH_NOT_SUPPORTED | ファイル監視がサポートされていません | WARNING |
+| `E-IO-014` | EXTERNAL_CHANGE | 外部からフォルダが変更されました | INFO |
 
 #### 画像エラー
 
@@ -355,88 +359,67 @@ export function ErrorDisplay({ error, onDismiss }: ErrorDisplayProps) {
 | 保持期間 | 7日間 |
 | 最大サイズ | 10MB/ファイル |
 
-### 5.4 Rust側ログ実装
+### 5.4 Rust側ログ実装 (tracing)
 
 ```rust
 // src-tauri/src/logger/mod.rs
 
-use chrono::Local;
-use log::{Level, LevelFilter, Metadata, Record};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::PathBuf;
-use std::sync::Mutex;
+use tracing_subscriber::{
+    fmt,
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter,
+};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
 
-pub struct FileLogger {
-    log_dir: PathBuf,
-    file: Mutex<Option<std::fs::File>>,
-    current_date: Mutex<String>,
+pub fn init_logger(log_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let file_appender = RollingFileAppender::new(
+        Rotation::DAILY,
+        log_dir,
+        "picsort.log",
+    );
+
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::new("info"))
+        .with(
+            fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_target(true)
+        )
+        .init();
+
+    Ok(())
 }
+```
 
-impl FileLogger {
-    pub fn new(log_dir: PathBuf) -> Self {
-        fs::create_dir_all(&log_dir).ok();
-        Self {
-            log_dir,
-            file: Mutex::new(None),
-            current_date: Mutex::new(String::new()),
+使用例:
+
+```rust
+use tracing::{info, warn, error, instrument};
+
+#[instrument(skip(path))]
+pub fn move_file(src: String, dest_folder: String) -> Result<String, AppError> {
+    info!(src = %src, dest = %dest_folder, "Moving file");
+
+    // ...処理...
+
+    match result {
+        Ok(path) => {
+            info!(path = %path, "File moved successfully");
+            Ok(path)
         }
-    }
-
-    fn get_log_file(&self) -> std::io::Result<std::fs::File> {
-        let today = Local::now().format("%Y-%m-%d").to_string();
-        let mut current = self.current_date.lock().unwrap();
-
-        if *current != today {
-            *current = today.clone();
-            let path = self.log_dir.join(format!("picsort_{}.log", today));
-            let file = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)?;
-            *self.file.lock().unwrap() = Some(file);
-        }
-
-        // ファイルを複製して返す
-        self.file.lock().unwrap()
-            .as_ref()
-            .ok_or(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Log file not initialized",
-            ))
-            .and_then(|f| f.try_clone())
-    }
-}
-
-impl log::Log for FileLogger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        metadata.level() <= Level::Info
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-            let line = format!(
-                "[{}] [{}] [{}] {}\n",
-                timestamp,
-                record.level(),
-                record.target(),
-                record.args()
-            );
-
-            if let Ok(mut file) = self.get_log_file() {
-                let _ = file.write_all(line.as_bytes());
-            }
-        }
-    }
-
-    fn flush(&self) {
-        if let Ok(mut file) = self.get_log_file() {
-            let _ = file.flush();
+        Err(e) => {
+            error!(error = %e, "File move failed");
+            Err(e)
         }
     }
 }
 ```
+
+> 詳細な設定は [architecture.md](./architecture.md) のセクション11「ログ設定 (tracing)」を参照。
 
 ## 6. エラーリカバリー
 

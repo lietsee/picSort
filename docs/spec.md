@@ -20,14 +20,19 @@ graph TB
     subgraph Frontend["フロントエンド"]
         React["React 18+"]
         TypeScript["TypeScript 5+"]
+        Tailwind["Tailwind CSS 3.4+"]
+        ShadcnUI["shadcn/ui"]
+        Lucide["Lucide React"]
         Context["React Context"]
-        Vite["Vite"]
+        Vite["Vite 5+"]
     end
 
     subgraph Backend["バックエンド (Rust)"]
         Tauri["Tauri 2.x"]
-        FileIO["ファイルI/O"]
-        Config["設定管理"]
+        Serde["serde / serde_json"]
+        Thiserror["thiserror"]
+        Tracing["tracing"]
+        Notify["notify"]
     end
 
     Frontend <-->|"Tauri Commands"| Backend
@@ -39,6 +44,9 @@ graph TB
 | フロントエンド | React | 18+ | UI構築 |
 | 言語 | TypeScript | 5+ | 型安全なフロントエンド開発 |
 | ビルドツール | Vite | 5+ | 高速な開発サーバー・バンドル |
+| スタイリング | Tailwind CSS | 3.4+ | ユーティリティファーストCSS |
+| UIコンポーネント | shadcn/ui | latest | 再利用可能なUIコンポーネント |
+| アイコン | Lucide React | latest | SVGアイコン |
 | 状態管理 | React Context | - | アプリケーション状態管理 |
 | バックエンド | Rust | 1.70+ | ファイルI/O・ネイティブ処理 |
 
@@ -142,7 +150,31 @@ graph TB
 - 更新確認: 起動時にリモートチェック
 - 更新適用: ユーザー確認後に実行
 
-## 8. 関連ドキュメント
+## 8. セキュリティ
+
+### 8.1 シンボリックリンク
+
+| 項目 | 仕様 |
+|------|------|
+| 分別元フォルダ内 | 警告ログを出力してスキップ |
+| 分別先フォルダ | シンボリックリンクのフォルダは選択不可 |
+| 通知 | ログに記録、ユーザーへは通知しない（静かにスキップ） |
+
+### 8.2 パストラバーサル対策
+
+- ファイル名に `..` や絶対パスが含まれる場合はスキップ
+- 移動先パスの正規化（canonicalize）を実施
+- 移動先が分別先フォルダ配下であることを検証
+
+### 8.3 ファイル名サニタイズ
+
+| 危険文字 | 対応 |
+|---------|------|
+| `../` | 除去 |
+| ヌル文字 | 除去 |
+| 制御文字 | 除去 |
+
+## 9. 関連ドキュメント
 
 - [機能要件詳細](./functional-requirements.md)
 - [UI/UX設計](./ui-ux-design.md)

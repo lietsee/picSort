@@ -130,6 +130,14 @@ sequenceDiagram
 picSort/
 ├── src/                          # Reactソースコード
 │   ├── components/               # UIコンポーネント
+│   │   ├── ui/                   # shadcn/ui コンポーネント
+│   │   │   ├── button.tsx
+│   │   │   ├── dialog.tsx
+│   │   │   ├── dropdown-menu.tsx
+│   │   │   ├── select.tsx
+│   │   │   ├── checkbox.tsx
+│   │   │   ├── tooltip.tsx
+│   │   │   └── toast.tsx
 │   │   ├── Header/
 │   │   │   ├── Header.tsx
 │   │   │   ├── FolderSelectButton.tsx
@@ -145,8 +153,17 @@ picSort/
 │   │   │   ├── EmptyState.tsx
 │   │   │   ├── DropZone.tsx
 │   │   │   └── index.ts
-│   │   └── StatusBar/
-│   │       ├── StatusBar.tsx
+│   │   ├── StatusBar/
+│   │   │   ├── StatusBar.tsx
+│   │   │   └── index.ts
+│   │   ├── Settings/             # 設定画面
+│   │   │   ├── Settings.tsx
+│   │   │   ├── ThemeSelector.tsx
+│   │   │   ├── LanguageSelector.tsx
+│   │   │   ├── DestinationList.tsx
+│   │   │   └── index.ts
+│   │   └── Wizard/               # 初回ウィザード
+│   │       ├── WelcomeWizard.tsx
 │   │       └── index.ts
 │   ├── contexts/                 # React Context
 │   │   ├── AppContext.tsx
@@ -157,6 +174,8 @@ picSort/
 │   │   ├── useKeyboard.ts
 │   │   ├── useSettings.ts
 │   │   └── useTauriCommands.ts
+│   ├── lib/                      # ユーティリティライブラリ
+│   │   └── utils.ts              # clsx + tailwind-merge
 │   ├── types/                    # TypeScript型定義
 │   │   ├── image.ts
 │   │   ├── settings.ts
@@ -168,8 +187,7 @@ picSort/
 │   │   ├── ja.json
 │   │   └── en.json
 │   ├── styles/                   # グローバルスタイル
-│   │   ├── globals.css
-│   │   └── themes.css
+│   │   └── globals.css           # Tailwind directives
 │   ├── App.tsx
 │   ├── main.tsx
 │   └── vite-env.d.ts
@@ -188,6 +206,8 @@ picSort/
 │   │   │   └── settings.rs
 │   │   ├── logger/               # ログ管理
 │   │   │   └── mod.rs
+│   │   ├── watcher/              # ファイル監視
+│   │   │   └── mod.rs
 │   │   ├── lib.rs
 │   │   └── main.rs
 │   ├── Cargo.toml
@@ -201,6 +221,9 @@ picSort/
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
+├── tailwind.config.js            # Tailwind CSS 設定
+├── postcss.config.js             # PostCSS 設定
+├── components.json               # shadcn/ui 設定
 └── README.md
 ```
 
@@ -217,6 +240,8 @@ picSort/
 | `load_settings` | - | `Result<Settings>` | 設定読み込み |
 | `save_settings` | `settings: Settings` | `Result<()>` | 設定保存 |
 | `get_app_dir` | - | `String` | アプリデータディレクトリ取得 |
+| `watch_folder` | `path: String` | `Result<()>` | フォルダ監視開始 |
+| `unwatch_folder` | `path: String` | `Result<()>` | フォルダ監視停止 |
 
 ### 5.2 コマンド定義例
 
@@ -661,3 +686,250 @@ sequenceDiagram
 | Tauri IPC | JavaScript Error | `{ message: "File not found" }` |
 | React Hook | throw Error | `throw new Error("File not found")` |
 | UI | statusMessage | ステータスバーに表示 |
+
+## 9. ファイルシステム監視
+
+### 9.1 実装方式
+
+| OS | ライブラリ | 備考 |
+|----|-----------|------|
+| macOS | FSEvents via notify crate | 高効率 |
+| Windows | ReadDirectoryChangesW via notify crate | 高効率 |
+| ネットワークドライブ | ポーリング（30秒間隔） | フォールバック |
+
+### 9.2 イベントフロー
+
+```mermaid
+sequenceDiagram
+    participant FS as FileSystem
+    participant Rust as Rust Backend
+    participant IPC as Tauri IPC
+    participant React as React UI
+
+    Rust->>FS: watch_folder(path)
+    FS-->>Rust: Watcher registered
+
+    FS->>Rust: File created/deleted
+    Rust->>Rust: Debounce 500ms
+    Rust->>IPC: emit("folder_changed", { path, event })
+    IPC->>React: Event received
+    React->>React: Re-scan folder
+```
+
+### 9.3 Rust実装
+
+```rust
+// src-tauri/src/watcher/mod.rs
+
+use notify::{RecommendedWatcher, RecursiveMode, Watcher, Config};
+use std::sync::mpsc::channel;
+use std::time::Duration;
+use tauri::{AppHandle, Manager};
+
+pub struct FolderWatcher {
+    watcher: Option<RecommendedWatcher>,
+}
+
+impl FolderWatcher {
+    pub fn new() -> Self {
+        Self { watcher: None }
+    }
+
+    pub fn watch(&mut self, path: &str, app: AppHandle) -> Result<(), String> {
+        let (tx, rx) = channel();
+
+        let mut watcher = RecommendedWatcher::new(
+            tx,
+            Config::default().with_poll_interval(Duration::from_secs(30)),
+        ).map_err(|e| e.to_string())?;
+
+        watcher.watch(path.as_ref(), RecursiveMode::NonRecursive)
+            .map_err(|e| e.to_string())?;
+
+        // イベントループ（別スレッド）
+        let app_handle = app.clone();
+        std::thread::spawn(move || {
+            let mut last_event = std::time::Instant::now();
+            loop {
+                match rx.recv_timeout(Duration::from_millis(100)) {
+                    Ok(Ok(event)) => {
+                        // デバウンス処理
+                        if last_event.elapsed() > Duration::from_millis(500) {
+                            app_handle.emit_all("folder_changed", &event).ok();
+                            last_event = std::time::Instant::now();
+                        }
+                    }
+                    Ok(Err(e)) => {
+                        log::error!("Watch error: {:?}", e);
+                    }
+                    Err(_) => continue, // タイムアウト、続行
+                }
+            }
+        });
+
+        self.watcher = Some(watcher);
+        Ok(())
+    }
+
+    pub fn unwatch(&mut self) {
+        self.watcher = None;
+    }
+}
+```
+
+### 9.4 React側イベントハンドリング
+
+```typescript
+// src/hooks/useFolderWatcher.ts
+
+import { useEffect } from 'react';
+import { listen } from '@tauri-apps/api/event';
+import { useApp } from '../contexts/AppContext';
+import { useTauriCommands } from './useTauriCommands';
+
+export function useFolderWatcher() {
+  const { state, dispatch } = useApp();
+  const { scanImages } = useTauriCommands();
+
+  useEffect(() => {
+    if (!state.sourceFolder) return;
+
+    const unlisten = listen('folder_changed', async (event) => {
+      console.log('Folder changed:', event.payload);
+
+      // 再スキャン
+      const images = await scanImages(state.sourceFolder!);
+      dispatch({ type: 'SET_IMAGES', payload: images });
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [state.sourceFolder, scanImages, dispatch]);
+}
+```
+
+## 10. 依存関係
+
+### 10.1 package.json (主要依存)
+
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "@tauri-apps/api": "^2.0.0",
+    "lucide-react": "^0.400.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "vitest": "^1.2.0",
+    "@testing-library/react": "^14.1.0",
+    "@playwright/test": "^1.40.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.0"
+  }
+}
+```
+
+### 10.2 Cargo.toml
+
+```toml
+[package]
+name = "picsort"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.70"
+
+[dependencies]
+tauri = { version = "2", features = ["dialog", "fs"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+notify = "6"
+natord = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+```
+
+### 10.3 shadcn/ui セットアップ
+
+使用するコンポーネント：
+- Button
+- Dialog (設定画面、ウィザード)
+- Dropdown Menu (テーマ選択)
+- Select (言語選択)
+- Checkbox
+- Tooltip
+- Toast (ステータス通知)
+
+## 11. ログ設定 (tracing)
+
+### 11.1 初期化
+
+```rust
+// src-tauri/src/logger/mod.rs
+
+use tracing_subscriber::{
+    fmt,
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+    EnvFilter,
+};
+use tracing_appender::rolling::{RollingFileAppender, Rotation};
+
+pub fn init_logger(log_dir: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    let file_appender = RollingFileAppender::new(
+        Rotation::DAILY,
+        log_dir,
+        "picsort.log",
+    );
+
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::new("info"))
+        .with(
+            fmt::layer()
+                .with_writer(non_blocking)
+                .with_ansi(false)
+                .with_target(true)
+        )
+        .init();
+
+    Ok(())
+}
+```
+
+### 11.2 使用例
+
+```rust
+use tracing::{info, warn, error, instrument};
+
+#[instrument(skip(path))]
+pub fn scan_images(path: String) -> Result<Vec<ImageInfo>, AppError> {
+    info!(path = %path, "Scanning folder");
+
+    // ...処理...
+
+    warn!(count = images.len(), "Scan completed");
+    Ok(images)
+}
+```
