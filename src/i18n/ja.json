@@ -20,7 +20,9 @@
   "destButton": {
     "notSet": "未設定",
     "rightClickToClear": "右クリックで設定解除",
-    "clickToSelect": "クリックしてフォルダを選択"
+    "clickToSelect": "クリックしてフォルダを選択",
+    "confirmTitle": "確認",
+    "confirmClear": "「{{folder}}」の設定を解除しますか？"
   },
   "status": {
     "scanning": "スキャン中...",
@@ -45,7 +47,8 @@
     "themeDark": "ダーク",
     "language": "言語",
     "destinations": "分別先フォルダ",
-    "destinationHint": "右クリックで設定を解除できます",
+    "selectFolder": "フォルダを選択",
+    "clearFolder": "設定を解除",
     "shortcuts": "キーボードショートカット",
     "close": "閉じる"
   },

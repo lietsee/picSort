@@ -457,6 +457,29 @@ body {
   white-space: nowrap;
 }
 
+.btn-dest-select,
+.btn-dest-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-dest-select:hover,
+.btn-dest-clear:hover {
+  background-color: var(--border);
+}
+
+.btn-dest-clear {
+  color: var(--error);
+}
+
 .settings-hint {
   margin-top: 0.5rem;
   font-size: 0.8rem;

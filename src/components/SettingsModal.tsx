@@ -5,6 +5,8 @@ interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
   destinations: Record<string, string | null>
+  onSelectDestination: (key: string) => void
+  onClearDestination: (key: string) => void
 }
 
 const KEYBINDING_KEYS = [
@@ -16,7 +18,13 @@ const KEYBINDING_KEYS = [
   { key: 'Cmd+, / Ctrl+,', descKey: 'shortcuts.openSettings' },
 ]
 
-export function SettingsModal({ isOpen, onClose, destinations }: SettingsModalProps) {
+export function SettingsModal({
+  isOpen,
+  onClose,
+  destinations,
+  onSelectDestination,
+  onClearDestination,
+}: SettingsModalProps) {
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
 
@@ -76,13 +84,28 @@ export function SettingsModal({ isOpen, onClose, destinations }: SettingsModalPr
             {(['1', '2', '3', '4', '5'] as const).map((key) => (
               <div key={key} className="settings-dest-row">
                 <span className="settings-dest-key">{key}</span>
-                <span className="settings-dest-path">
-                  {destinations[key] || t('destButton.notSet')}
+                <span className="settings-dest-path" title={destinations[key] || undefined}>
+                  {destinations[key]?.split('/').pop() || t('destButton.notSet')}
                 </span>
+                <button
+                  className="btn-dest-select"
+                  onClick={() => onSelectDestination(key)}
+                  title={t('settings.selectFolder')}
+                >
+                  📁
+                </button>
+                {destinations[key] && (
+                  <button
+                    className="btn-dest-clear"
+                    onClick={() => onClearDestination(key)}
+                    title={t('settings.clearFolder')}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             ))}
           </div>
-          <p className="settings-hint">{t('settings.destinationHint')}</p>
         </section>
 
         <section className="settings-section">

@@ -473,6 +473,8 @@ function AppContent() {
         isOpen={showSettings}
         onClose={handleCloseSettings}
         destinations={state.destinations}
+        onSelectDestination={handleSelectDestination}
+        onClearDestination={(key) => dispatch({ type: 'SET_DESTINATION', payload: { key, path: null } })}
       />
       <Header
         title="picSort"

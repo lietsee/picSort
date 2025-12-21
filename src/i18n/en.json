@@ -20,7 +20,9 @@
   "destButton": {
     "notSet": "Not set",
     "rightClickToClear": "Right-click to clear",
-    "clickToSelect": "Click to select folder"
+    "clickToSelect": "Click to select folder",
+    "confirmTitle": "Confirm",
+    "confirmClear": "Clear \"{{folder}}\" setting?"
   },
   "status": {
     "scanning": "Scanning...",
@@ -45,7 +47,8 @@
     "themeDark": "Dark",
     "language": "Language",
     "destinations": "Destination Folders",
-    "destinationHint": "Right-click to clear settings",
+    "selectFolder": "Select folder",
+    "clearFolder": "Clear",
     "shortcuts": "Keyboard Shortcuts",
     "close": "Close"
   },
