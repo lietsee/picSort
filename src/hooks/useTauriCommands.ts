@@ -21,10 +21,25 @@ export function useTauriCommands() {
     return await invoke<void>('save_settings', { settings, configPath })
   }
 
+  const startWatching = async (path: string): Promise<void> => {
+    return await invoke<void>('start_watching', { path })
+  }
+
+  const stopWatching = async (): Promise<void> => {
+    return await invoke<void>('stop_watching')
+  }
+
+  const getLogPath = async (): Promise<string> => {
+    return await invoke<string>('get_log_path')
+  }
+
   return {
     scanImages,
     moveFile,
     loadSettings,
     saveSettings,
+    startWatching,
+    stopWatching,
+    getLogPath,
   }
 }

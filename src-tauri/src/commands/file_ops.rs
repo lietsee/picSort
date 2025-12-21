@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+use tracing::{debug, error, info};
 
 #[derive(Debug, Serialize)]
 pub struct ImageInfo {
@@ -40,8 +41,11 @@ fn generate_unique_path(folder: &str, file_name: &str) -> Result<String, String>
 /// ファイルを指定フォルダに移動する
 #[tauri::command]
 pub fn move_file(src: String, dest_folder: String) -> Result<String, String> {
+    debug!("ファイル移動開始: {} -> {}", src, dest_folder);
+
     let src_path = Path::new(&src);
     if !src_path.exists() {
+        error!("移動元ファイルが見つかりません: {}", src);
         return Err(format!("Source file not found: {}", src));
     }
 
@@ -53,22 +57,32 @@ pub fn move_file(src: String, dest_folder: String) -> Result<String, String> {
 
     let dest_path = generate_unique_path(&dest_folder, &file_name)?;
 
-    fs::rename(&src, &dest_path).map_err(|e| e.to_string())?;
+    fs::rename(&src, &dest_path).map_err(|e| {
+        error!("ファイル移動エラー: {} -> {}: {}", src, dest_path, e);
+        e.to_string()
+    })?;
 
+    info!("ファイル移動完了: {} -> {}", src, dest_path);
     Ok(dest_path)
 }
 
 /// 指定フォルダ内の画像ファイルをスキャンして返す
 #[tauri::command]
 pub fn scan_images(path: String) -> Result<Vec<ImageInfo>, String> {
+    debug!("画像スキャン開始: {}", path);
+
     let dir = Path::new(&path);
     if !dir.is_dir() {
+        error!("ディレクトリではありません: {}", path);
         return Err(format!("Not a directory: {}", path));
     }
 
     let mut images = Vec::new();
 
-    let entries = fs::read_dir(dir).map_err(|e| e.to_string())?;
+    let entries = fs::read_dir(dir).map_err(|e| {
+        error!("ディレクトリ読み込みエラー: {}: {}", path, e);
+        e.to_string()
+    })?;
 
     for entry in entries {
         let entry = entry.map_err(|e| e.to_string())?;
@@ -99,6 +113,7 @@ pub fn scan_images(path: String) -> Result<Vec<ImageInfo>, String> {
     // 自然順ソート
     images.sort_by(|a, b| natord::compare(&a.name, &b.name));
 
+    info!("画像スキャン完了: {} - {}枚の画像を検出", path, images.len());
     Ok(images)
 }
 

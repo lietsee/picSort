@@ -36,3 +36,11 @@ vi.mock('@tauri-apps/api/window', () => {
     getCurrentWindow: vi.fn(() => mockWindow),
   }
 })
+
+// Tauri Event APIのモック
+vi.mock('@tauri-apps/api/event', () => {
+  return {
+    listen: vi.fn(() => Promise.resolve(() => {})),
+    emit: vi.fn(() => Promise.resolve()),
+  }
+})

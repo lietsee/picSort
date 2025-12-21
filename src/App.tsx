@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import { appDataDir, join } from '@tauri-apps/api/path'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import { AppProvider, useApp } from './contexts/AppContext'
 import { useKeyboard } from './hooks/useKeyboard'
 import { useTauriCommands } from './hooks/useTauriCommands'
@@ -11,13 +12,20 @@ import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
 import type { Settings } from './types'
 
+// ファイルシステム変更イベントの型
+interface FsChangeEvent {
+  type: 'Created' | 'Modified' | 'Removed'
+  path: string
+}
+
 function AppContent() {
   const { state, dispatch } = useApp()
-  const { scanImages, moveFile, loadSettings, saveSettings } = useTauriCommands()
+  const { scanImages, moveFile, loadSettings, saveSettings, startWatching, stopWatching } = useTauriCommands()
   const configPathRef = useRef<string | null>(null)
   const isInitializedRef = useRef(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const settingsRef = useRef<Settings | null>(null)
+  const unlistenRef = useRef<UnlistenFn | null>(null)
 
   // 設定ファイルパスを取得して設定を読み込む
   useEffect(() => {
@@ -104,6 +112,10 @@ function AppContent() {
       try {
         const images = await scanImages(selected as string)
         dispatch({ type: 'SET_IMAGES', payload: images })
+
+        // ファイルシステム監視を開始
+        await startWatching(selected as string)
+
         dispatch({
           type: 'SET_STATUS',
           payload: {
@@ -118,7 +130,7 @@ function AppContent() {
         })
       }
     }
-  }, [dispatch, scanImages])
+  }, [dispatch, scanImages, startWatching])
 
   const handleSelectDestination = useCallback(
     async (key: string) => {
@@ -219,6 +231,10 @@ function AppContent() {
             try {
               const images = await scanImages(folderPath)
               dispatch({ type: 'SET_IMAGES', payload: images })
+
+              // ファイルシステム監視を開始
+              await startWatching(folderPath)
+
               dispatch({
                 type: 'SET_STATUS',
                 payload: {
@@ -236,7 +252,7 @@ function AppContent() {
         }
       }
     },
-    [dispatch, scanImages]
+    [dispatch, scanImages, startWatching]
   )
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -264,6 +280,60 @@ function AppContent() {
       // 保存失敗は無視
     }
   }, [state.destinations, saveSettings])
+
+  // ファイルシステム変更イベントをリッスン
+  useEffect(() => {
+    const setupListener = async () => {
+      // 既存のリスナーを解除
+      if (unlistenRef.current) {
+        unlistenRef.current()
+      }
+
+      unlistenRef.current = await listen<FsChangeEvent>('fs-change', async (event) => {
+        const { type, path } = event.payload
+
+        if (type === 'Created') {
+          // ファイルが追加された場合、画像リストを再スキャン
+          if (state.sourceFolder) {
+            try {
+              const images = await scanImages(state.sourceFolder)
+              dispatch({ type: 'SET_IMAGES', payload: images })
+              dispatch({
+                type: 'SET_STATUS',
+                payload: {
+                  status: 'idle',
+                  message: `ファイル追加検知: ${path.split('/').pop()}`,
+                },
+              })
+            } catch {
+              // 再スキャン失敗は無視
+            }
+          }
+        } else if (type === 'Removed') {
+          // ファイルが削除された場合、画像リストから削除
+          const removedIndex = state.images.findIndex((img) => img.path === path)
+          if (removedIndex !== -1) {
+            dispatch({ type: 'SET_IMAGES', payload: state.images.filter((img) => img.path !== path) })
+            dispatch({
+              type: 'SET_STATUS',
+              payload: {
+                status: 'idle',
+                message: `ファイル削除検知: ${path.split('/').pop()}`,
+              },
+            })
+          }
+        }
+      })
+    }
+
+    setupListener()
+
+    return () => {
+      if (unlistenRef.current) {
+        unlistenRef.current()
+      }
+    }
+  }, [state.sourceFolder, state.images, scanImages, dispatch])
 
   // ウィンドウ状態保存（終了時）
   useEffect(() => {

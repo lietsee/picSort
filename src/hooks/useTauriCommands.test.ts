@@ -110,4 +110,40 @@ describe('useTauriCommands', () => {
       })
     })
   })
+
+  describe('startWatching', () => {
+    it('start_watchingコマンドを正しく呼び出す', async () => {
+      mockInvoke.mockResolvedValueOnce(undefined)
+
+      const { result } = renderHook(() => useTauriCommands())
+      await result.current.startWatching('/path/to/watch')
+
+      expect(mockInvoke).toHaveBeenCalledWith('start_watching', {
+        path: '/path/to/watch',
+      })
+    })
+  })
+
+  describe('stopWatching', () => {
+    it('stop_watchingコマンドを正しく呼び出す', async () => {
+      mockInvoke.mockResolvedValueOnce(undefined)
+
+      const { result } = renderHook(() => useTauriCommands())
+      await result.current.stopWatching()
+
+      expect(mockInvoke).toHaveBeenCalledWith('stop_watching')
+    })
+  })
+
+  describe('getLogPath', () => {
+    it('get_log_pathコマンドを正しく呼び出す', async () => {
+      mockInvoke.mockResolvedValueOnce('/path/to/logs/picsort.log')
+
+      const { result } = renderHook(() => useTauriCommands())
+      const logPath = await result.current.getLogPath()
+
+      expect(mockInvoke).toHaveBeenCalledWith('get_log_path')
+      expect(logPath).toBe('/path/to/logs/picsort.log')
+    })
+  })
 })
