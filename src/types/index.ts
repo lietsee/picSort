@@ -10,6 +10,7 @@ export interface Settings {
   theme: 'system' | 'light' | 'dark'
   language: 'ja' | 'en'
   showWelcome?: boolean
+  sourceFolder?: string | null
   window?: {
     width: number
     height: number

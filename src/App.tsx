@@ -61,6 +61,17 @@ function AppContent() {
           }
         })
 
+        // 分別元フォルダを復元
+        if (settings.sourceFolder) {
+          dispatch({ type: 'SET_SOURCE_FOLDER', payload: settings.sourceFolder })
+          try {
+            const images = await scanImages(settings.sourceFolder)
+            dispatch({ type: 'SET_IMAGES', payload: images })
+          } catch {
+            // スキャン失敗は無視
+          }
+        }
+
         // 初回起動時はウェルカムモーダルを表示
         if (settings.showWelcome !== false) {
           setShowWelcome(true)
@@ -72,17 +83,19 @@ function AppContent() {
     }
 
     initSettings()
-  }, [dispatch, loadSettings])
+  }, [dispatch, loadSettings, scanImages])
 
-  // 分別先が変更されたら設定を保存
+  // 分別先/分別元が変更されたら設定を保存
   useEffect(() => {
     const saveCurrentSettings = async () => {
       if (!configPathRef.current || !isInitializedRef.current) return
 
-      const settings = {
+      const settings: Settings = {
         destinations: state.destinations,
-        theme: 'system' as const,
-        language: 'ja' as const,
+        theme: 'system',
+        language: 'ja',
+        showWelcome: settingsRef.current?.showWelcome ?? true,
+        sourceFolder: state.sourceFolder,
         window: { width: 1280, height: 800, x: null, y: null },
       }
 
@@ -97,7 +110,7 @@ function AppContent() {
     if (isInitializedRef.current) {
       saveCurrentSettings()
     }
-  }, [state.destinations, saveSettings])
+  }, [state.destinations, state.sourceFolder, saveSettings])
 
   const currentImage =
     state.images.length > 0 ? state.images[state.currentIndex] : null
@@ -291,11 +304,17 @@ function AppContent() {
   const handleDontShowWelcomeAgain = useCallback(async () => {
     if (!configPathRef.current) return
 
+    // settingsRefを更新
+    if (settingsRef.current) {
+      settingsRef.current.showWelcome = false
+    }
+
     const settings: Settings = {
       destinations: state.destinations,
       theme: 'system',
       language: 'ja',
       showWelcome: false,
+      sourceFolder: state.sourceFolder,
     }
 
     try {
@@ -303,7 +322,7 @@ function AppContent() {
     } catch {
       // 保存失敗は無視
     }
-  }, [state.destinations, saveSettings])
+  }, [state.destinations, state.sourceFolder, saveSettings])
 
   // ファイルシステム変更イベントをリッスン
   useEffect(() => {
@@ -372,6 +391,7 @@ function AppContent() {
           theme: 'system',
           language: 'ja',
           showWelcome: settingsRef.current?.showWelcome ?? true,
+          sourceFolder: state.sourceFolder,
           window: {
             width: size.width,
             height: size.height,
@@ -395,7 +415,7 @@ function AppContent() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [state.destinations, saveSettings])
+  }, [state.destinations, state.sourceFolder, saveSettings])
 
   const handleUndo = useCallback(async () => {
     if (!canUndo) return

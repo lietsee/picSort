@@ -40,7 +40,15 @@ pub struct Settings {
     pub destinations: HashMap<String, Option<String>>,
     pub theme: Theme,
     pub language: String,
+    #[serde(default = "default_show_welcome", rename = "showWelcome")]
+    pub show_welcome: bool,
+    #[serde(default, rename = "sourceFolder")]
+    pub source_folder: Option<String>,
     pub window: WindowSettings,
+}
+
+fn default_show_welcome() -> bool {
+    true
 }
 
 impl Default for Settings {
@@ -54,6 +62,8 @@ impl Default for Settings {
             destinations,
             theme: Theme::default(),
             language: "ja".to_string(),
+            show_welcome: true,
+            source_folder: None,
             window: WindowSettings::default(),
         }
     }
