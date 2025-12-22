@@ -43,6 +43,7 @@ export interface MoveHistoryItem {
 export type AppAction =
   | { type: 'SET_SOURCE_FOLDER'; payload: string }
   | { type: 'SET_IMAGES'; payload: ImageInfo[] }
+  | { type: 'SET_IMAGES_PRESERVE_CURRENT'; payload: { images: ImageInfo[]; currentPath: string | null } }
   | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'REMOVE_CURRENT_IMAGE' }
   | { type: 'REMOVE_IMAGE_BY_PATH'; payload: string }

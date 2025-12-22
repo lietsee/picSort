@@ -51,6 +51,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
         currentIndex: 0,
       }
 
+    case 'SET_IMAGES_PRESERVE_CURRENT': {
+      const newImages = action.payload.images
+      const currentPath = action.payload.currentPath
+      // 現在表示中のファイルのインデックスを探す
+      let newIndex = 0
+      if (currentPath) {
+        const foundIndex = newImages.findIndex(img => img.path === currentPath)
+        if (foundIndex !== -1) {
+          newIndex = foundIndex
+        }
+      }
+      return {
+        ...state,
+        images: newImages,
+        currentIndex: newIndex,
+      }
+    }
+
     case 'SET_CURRENT_INDEX':
       return {
         ...state,

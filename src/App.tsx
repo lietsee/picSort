@@ -424,7 +424,7 @@ function AppContent() {
   }, [state.destinations, state.sourceFolder, saveSettings])
 
   const handleUndo = useCallback(async () => {
-    if (!canUndo) return
+    if (!canUndo || !state.sourceFolder) return
 
     const item = undo()
     if (!item) return
@@ -432,13 +432,16 @@ function AppContent() {
     // ファイルウォッチャーイベントを一時的に無視
     isUndoRedoInProgress.current = true
 
+    // 現在表示中のファイルのパスを記憶
+    const currentPath = state.images[state.currentIndex]?.path || null
+
     try {
       await undoMove(item.destPath, item.sourceFolder)
-      // リストにファイルを追加（再スキャンせずにインデックスを保持）
-      const fileName = item.sourcePath.split(/[/\\]/).pop() || ''
+      // Rust側で再スキャンして正しいソート順を取得
+      const images = await scanImages(state.sourceFolder)
       dispatch({
-        type: 'ADD_IMAGE_BY_PATH',
-        payload: { path: item.sourcePath, name: fileName },
+        type: 'SET_IMAGES_PRESERVE_CURRENT',
+        payload: { images, currentPath },
       })
       dispatch({
         type: 'SET_STATUS',
@@ -455,10 +458,10 @@ function AppContent() {
         isUndoRedoInProgress.current = false
       }, 600)
     }
-  }, [canUndo, undo, undoMove, dispatch, t])
+  }, [canUndo, undo, undoMove, scanImages, state.sourceFolder, state.images, state.currentIndex, dispatch, t])
 
   const handleRedo = useCallback(async () => {
-    if (!canRedo) return
+    if (!canRedo || !state.sourceFolder) return
 
     const item = redo()
     if (!item) return
@@ -466,13 +469,20 @@ function AppContent() {
     // ファイルウォッチャーイベントを一時的に無視
     isUndoRedoInProgress.current = true
 
+    // 現在表示中のファイルのパスを記憶
+    const currentPath = state.images[state.currentIndex]?.path || null
+
     // Redo: ファイルを再度移動（sourcePath はファイルのフルパス）
     try {
       // destPath からフォルダ部分を抽出（クロスプラットフォーム対応）
       const destFolder = item.destPath.replace(/[\\/][^\\/]+$/, '')
       await moveFile(item.sourcePath, destFolder)
-      // リストからファイルを削除（再スキャンせずにインデックスを保持）
-      dispatch({ type: 'REMOVE_IMAGE_BY_PATH', payload: item.sourcePath })
+      // Rust側で再スキャンして正しいソート順を取得
+      const images = await scanImages(state.sourceFolder)
+      dispatch({
+        type: 'SET_IMAGES_PRESERVE_CURRENT',
+        payload: { images, currentPath },
+      })
       dispatch({
         type: 'SET_STATUS',
         payload: { status: 'success', message: t('status.redone') },
@@ -488,7 +498,7 @@ function AppContent() {
         isUndoRedoInProgress.current = false
       }, 600)
     }
-  }, [canRedo, redo, moveFile, dispatch, t])
+  }, [canRedo, redo, moveFile, scanImages, state.sourceFolder, state.images, state.currentIndex, dispatch, t])
 
   useKeyboard({
     onMove: handleMove,
