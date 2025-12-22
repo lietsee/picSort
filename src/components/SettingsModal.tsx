@@ -10,7 +10,7 @@ interface SettingsModalProps {
 }
 
 const KEYBINDING_KEYS = [
-  { key: '1-5', descKey: 'shortcuts.moveToDestination' },
+  { key: '1-0', descKey: 'shortcuts.moveToDestination' },
   { key: '← / A', descKey: 'shortcuts.prevImage' },
   { key: '→ / D / Space', descKey: 'shortcuts.nextImage' },
   { key: 'Backspace', descKey: 'shortcuts.prevImage' },

@@ -31,7 +31,7 @@ export function WelcomeModal({ isOpen, onClose, onDontShowAgain }: WelcomeModalP
 
           <h3>{t('welcome.keyboardShortcuts')}</h3>
           <ul>
-            <li><strong>1-5</strong>: {t('welcome.shortcut1_5')}</li>
+            <li><strong>1-0</strong>: {t('welcome.shortcut1_5')}</li>
             <li><strong>← / A / Backspace</strong>: {t('welcome.shortcutPrev')}</li>
             <li><strong>→ / D / Space</strong>: {t('welcome.shortcutNext')}</li>
             <li><strong>F</strong>: {t('welcome.shortcutFullscreen')}</li>

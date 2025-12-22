@@ -63,7 +63,7 @@
     "title": "Welcome to picSort",
     "basicUsage": "Basic Usage",
     "basicStep1": "Load images via Select Folder or drag & drop",
-    "basicStep2": "Set destination folders using 1-5 keys or sidebar buttons",
+    "basicStep2": "Set destination folders using 1-0 keys or sidebar buttons",
     "basicStep3": "Press the same key again to move the image",
     "keyboardShortcuts": "Keyboard Shortcuts",
     "shortcut1_5": "Move to destination",
