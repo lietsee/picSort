@@ -36,6 +36,7 @@ vi.mock('@tauri-apps/api/path', () => {
 vi.mock('@tauri-apps/plugin-dialog', () => {
   return {
     open: vi.fn(),
+    confirm: vi.fn(() => Promise.resolve(true)),
   }
 })
 

@@ -16,6 +16,7 @@ import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
 import { SettingsModal } from './components/SettingsModal'
 import type { Settings } from './types'
+import { getFileName } from './utils/path'
 
 // ファイルシステム変更イベントの型
 interface FsChangeEvent {
@@ -313,7 +314,7 @@ function AppContent() {
 
       unlistenRef.current = await listen<FsChangeEvent>('fs-change', async (event) => {
         const { type, path } = event.payload
-        const fileName = path.split('/').pop() || ''
+        const fileName = getFileName(path)
 
         if (type === 'Created') {
           // ファイルが追加された場合、画像リストを再スキャン

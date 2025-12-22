@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '../test/testUtils'
+import { render, screen, fireEvent, waitFor } from '../test/testUtils'
 import { DestButton } from './DestButton'
 
 describe('DestButton', () => {
@@ -56,7 +56,7 @@ describe('DestButton', () => {
     expect(button).toHaveClass('active')
   })
 
-  it('右クリックでonClearが呼ばれる（パスが設定されている場合）', () => {
+  it('右クリックでonClearが呼ばれる（パスが設定されている場合）', async () => {
     const onClear = vi.fn()
     render(
       <DestButton
@@ -69,7 +69,9 @@ describe('DestButton', () => {
 
     const button = screen.getByRole('button')
     fireEvent.contextMenu(button)
-    expect(onClear).toHaveBeenCalledTimes(1)
+    await waitFor(() => {
+      expect(onClear).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('パスが未設定の場合、右クリックでonClearが呼ばれない', () => {

@@ -1,5 +1,6 @@
 import { confirm } from '@tauri-apps/plugin-dialog'
 import { useLanguage } from '../contexts/LanguageContext'
+import { getFileName } from '../utils/path'
 
 interface DestButtonProps {
   keyNum: string
@@ -21,12 +22,12 @@ export function DestButton({
   lastUsed = false,
 }: DestButtonProps) {
   const { t } = useLanguage()
-  const folderName = path ? path.split('/').pop() : t('destButton.notSet')
+  const folderName = path ? getFileName(path) : t('destButton.notSet')
 
   const handleContextMenu = async (e: React.MouseEvent) => {
     e.preventDefault()
     if (path && onClear) {
-      const name = path.split('/').pop() || path
+      const name = getFileName(path) || path
       const confirmed = await confirm(t('destButton.confirmClear', { folder: name }), {
         title: t('destButton.confirmTitle'),
         kind: 'warning',
