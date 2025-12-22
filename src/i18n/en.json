@@ -54,10 +54,17 @@
   },
   "shortcuts": {
     "moveToDestination": "Move to destination",
-    "prevImage": "Previous image",
-    "nextImage": "Next image",
+    "prevImage": "Previous image/video",
+    "nextImage": "Next image/video",
     "toggleFullscreen": "Toggle fullscreen",
-    "openSettings": "Open settings"
+    "openSettings": "Open settings",
+    "undo": "Undo",
+    "redo": "Redo",
+    "videoSection": "Video Controls",
+    "videoPlayPause": "Play/Pause",
+    "videoSeek30": "Seek 30 seconds",
+    "videoSeek5": "Seek 5 seconds",
+    "videoVolume": "Volume control"
   },
   "welcome": {
     "title": "Welcome to picSort",

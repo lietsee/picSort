@@ -54,10 +54,17 @@
   },
   "shortcuts": {
     "moveToDestination": "対応する分別先へ移動",
-    "prevImage": "前の画像",
-    "nextImage": "次の画像",
+    "prevImage": "前の画像/動画",
+    "nextImage": "次の画像/動画",
     "toggleFullscreen": "フルスクリーン切替",
-    "openSettings": "設定を開く"
+    "openSettings": "設定を開く",
+    "undo": "元に戻す",
+    "redo": "やり直す",
+    "videoSection": "動画操作",
+    "videoPlayPause": "再生/一時停止",
+    "videoSeek30": "30秒 早送り/巻き戻し",
+    "videoSeek5": "5秒 早送り/巻き戻し",
+    "videoVolume": "音量調整"
   },
   "welcome": {
     "title": "picSort へようこそ",

@@ -22,7 +22,7 @@ describe('useKeyboard', () => {
     vi.clearAllMocks()
   })
 
-  it('数字キー1-5でonMoveが呼ばれる', () => {
+  it('数字キー1-0でonMoveが呼ばれる', () => {
     renderHook(
       () => useKeyboard({ onMove: mockOnMove, onNavigate: mockOnNavigate }),
       { wrapper }
@@ -37,6 +37,11 @@ describe('useKeyboard', () => {
     const event5 = new KeyboardEvent('keydown', { key: '5' })
     window.dispatchEvent(event5)
     expect(mockOnMove).toHaveBeenCalledWith('5')
+
+    // キー0を押す
+    const event0 = new KeyboardEvent('keydown', { key: '0' })
+    window.dispatchEvent(event0)
+    expect(mockOnMove).toHaveBeenCalledWith('0')
   })
 
   it('矢印キーでonNavigateが呼ばれる', () => {

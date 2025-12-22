@@ -11,11 +11,20 @@ interface SettingsModalProps {
 
 const KEYBINDING_KEYS = [
   { key: '1-0', descKey: 'shortcuts.moveToDestination' },
-  { key: '← / A', descKey: 'shortcuts.prevImage' },
-  { key: '→ / D / Space', descKey: 'shortcuts.nextImage' },
+  { key: '← / A / P', descKey: 'shortcuts.prevImage' },
+  { key: '→ / D / N', descKey: 'shortcuts.nextImage' },
   { key: 'Backspace', descKey: 'shortcuts.prevImage' },
   { key: 'F', descKey: 'shortcuts.toggleFullscreen' },
+  { key: 'Cmd+Z / Ctrl+Z', descKey: 'shortcuts.undo' },
+  { key: 'Cmd+Shift+Z / Ctrl+Y', descKey: 'shortcuts.redo' },
   { key: 'Cmd+, / Ctrl+,', descKey: 'shortcuts.openSettings' },
+]
+
+const VIDEO_KEYBINDING_KEYS = [
+  { key: 'Space', descKey: 'shortcuts.videoPlayPause' },
+  { key: '← / →', descKey: 'shortcuts.videoSeek30' },
+  { key: '; / \'', descKey: 'shortcuts.videoSeek5' },
+  { key: '↑ / ↓', descKey: 'shortcuts.videoVolume' },
 ]
 
 export function SettingsModal({
@@ -112,6 +121,15 @@ export function SettingsModal({
           <h3>{t('settings.shortcuts')}</h3>
           <div className="settings-keybindings">
             {KEYBINDING_KEYS.map(({ key, descKey }) => (
+              <div key={key} className="settings-keybind-row">
+                <kbd className="settings-key">{key}</kbd>
+                <span className="settings-keybind-desc">{t(descKey)}</span>
+              </div>
+            ))}
+          </div>
+          <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>{t('shortcuts.videoSection')}</h4>
+          <div className="settings-keybindings">
+            {VIDEO_KEYBINDING_KEYS.map(({ key, descKey }) => (
               <div key={key} className="settings-keybind-row">
                 <kbd className="settings-key">{key}</kbd>
                 <span className="settings-keybind-desc">{t(descKey)}</span>
