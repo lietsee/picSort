@@ -45,17 +45,22 @@ function AppContent() {
       if (isInitializedRef.current) return
       isInitializedRef.current = true
 
+      console.log('[Settings] initSettings started')
+
       try {
         const dataDir = await appDataDir()
         const configPath = await join(dataDir, 'config.json')
         configPathRef.current = configPath
+        console.log('[Settings] configPath:', configPath)
 
         const settings = await loadSettings(configPath)
         settingsRef.current = settings
+        console.log('[Settings] loaded settings:', JSON.stringify(settings, null, 2))
 
         // 分別先フォルダを復元
         Object.entries(settings.destinations).forEach(([key, path]) => {
           if (path) {
+            console.log('[Settings] restoring destination:', key, path)
             dispatch({
               type: 'SET_DESTINATION',
               payload: { key, path },
@@ -65,12 +70,14 @@ function AppContent() {
 
         // 分別元フォルダを復元
         if (settings.sourceFolder) {
+          console.log('[Settings] restoring sourceFolder:', settings.sourceFolder)
           dispatch({ type: 'SET_SOURCE_FOLDER', payload: settings.sourceFolder })
           try {
             const images = await scanImages(settings.sourceFolder)
             dispatch({ type: 'SET_IMAGES', payload: images })
-          } catch {
-            // スキャン失敗は無視
+            console.log('[Settings] scanned images count:', images.length)
+          } catch (e) {
+            console.error('[Settings] scan failed:', e)
           }
         }
 
@@ -81,7 +88,9 @@ function AppContent() {
 
         // 設定読み込み完了
         settingsLoadedRef.current = true
-      } catch {
+        console.log('[Settings] initSettings completed, settingsLoadedRef:', settingsLoadedRef.current)
+      } catch (e) {
+        console.error('[Settings] initSettings error:', e)
         // 設定ファイルが存在しない場合は初回起動
         setShowWelcome(true)
         settingsLoadedRef.current = true
@@ -94,7 +103,11 @@ function AppContent() {
   // 分別先/分別元が変更されたら設定を保存
   useEffect(() => {
     const saveCurrentSettings = async () => {
-      if (!configPathRef.current || !settingsLoadedRef.current) return
+      console.log('[Settings] saveCurrentSettings called, configPath:', configPathRef.current, 'settingsLoaded:', settingsLoadedRef.current)
+      if (!configPathRef.current || !settingsLoadedRef.current) {
+        console.log('[Settings] saveCurrentSettings skipped (not ready)')
+        return
+      }
 
       const settings: Settings = {
         destinations: state.destinations,
@@ -105,10 +118,13 @@ function AppContent() {
         window: { width: 1280, height: 800, x: null, y: null },
       }
 
+      console.log('[Settings] saving settings:', JSON.stringify(settings, null, 2))
+
       try {
         await saveSettings(settings, configPathRef.current)
-      } catch {
-        // 保存失敗は無視
+        console.log('[Settings] settings saved successfully')
+      } catch (e) {
+        console.error('[Settings] save failed:', e)
       }
     }
 
