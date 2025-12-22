@@ -45,6 +45,7 @@ export type AppAction =
   | { type: 'SET_CURRENT_INDEX'; payload: number }
   | { type: 'REMOVE_CURRENT_IMAGE' }
   | { type: 'REMOVE_IMAGE_BY_PATH'; payload: string }
+  | { type: 'ADD_IMAGE_BY_PATH'; payload: ImageInfo }
   | { type: 'SET_DESTINATION'; payload: { key: string; path: string | null } }
   | { type: 'SET_LAST_USED_DESTINATION'; payload: string }
   | { type: 'SET_STATUS'; payload: { status: Status; message?: string } }

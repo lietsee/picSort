@@ -65,6 +65,28 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
+    case 'ADD_IMAGE_BY_PATH': {
+      const newImage = action.payload
+      // 既に存在する場合は何もしない
+      if (state.images.some(img => img.path === newImage.path)) {
+        return state
+      }
+      // 適切な位置に挿入（ソート順を維持）
+      const newImages = [...state.images, newImage].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      )
+      // currentIndexを調整（挿入位置が現在位置以下なら+1）
+      const insertedIndex = newImages.findIndex(img => img.path === newImage.path)
+      const newIndex = insertedIndex <= state.currentIndex
+        ? state.currentIndex + 1
+        : state.currentIndex
+      return {
+        ...state,
+        images: newImages,
+        currentIndex: newIndex,
+      }
+    }
+
     case 'SET_DESTINATION':
       return {
         ...state,

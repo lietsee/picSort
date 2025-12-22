@@ -405,11 +405,12 @@ function AppContent() {
 
     try {
       await undoMove(item.destPath, item.sourceFolder)
-      // ソースフォルダを再スキャン
-      if (state.sourceFolder) {
-        const images = await scanImages(state.sourceFolder)
-        dispatch({ type: 'SET_IMAGES', payload: images })
-      }
+      // リストにファイルを追加（再スキャンせずにインデックスを保持）
+      const fileName = item.sourcePath.split(/[/\\]/).pop() || ''
+      dispatch({
+        type: 'ADD_IMAGE_BY_PATH',
+        payload: { path: item.sourcePath, name: fileName },
+      })
       dispatch({
         type: 'SET_STATUS',
         payload: { status: 'success', message: t('status.undone') },
@@ -420,7 +421,7 @@ function AppContent() {
         payload: { status: 'error', message: t('status.undoError', { error: String(error) }) },
       })
     }
-  }, [canUndo, undo, undoMove, state.sourceFolder, scanImages, dispatch, t])
+  }, [canUndo, undo, undoMove, dispatch, t])
 
   const handleRedo = useCallback(async () => {
     if (!canRedo) return
@@ -433,11 +434,8 @@ function AppContent() {
       // destPath からフォルダ部分を抽出（クロスプラットフォーム対応）
       const destFolder = item.destPath.replace(/[\\/][^\\/]+$/, '')
       await moveFile(item.sourcePath, destFolder)
-      // ソースフォルダを再スキャン
-      if (state.sourceFolder) {
-        const images = await scanImages(state.sourceFolder)
-        dispatch({ type: 'SET_IMAGES', payload: images })
-      }
+      // リストからファイルを削除（再スキャンせずにインデックスを保持）
+      dispatch({ type: 'REMOVE_IMAGE_BY_PATH', payload: item.sourcePath })
       dispatch({
         type: 'SET_STATUS',
         payload: { status: 'success', message: t('status.redone') },
@@ -448,7 +446,7 @@ function AppContent() {
         payload: { status: 'error', message: t('status.redoError', { error: String(error) }) },
       })
     }
-  }, [canRedo, redo, moveFile, state.sourceFolder, scanImages, dispatch, t])
+  }, [canRedo, redo, moveFile, dispatch, t])
 
   useKeyboard({
     onMove: handleMove,
