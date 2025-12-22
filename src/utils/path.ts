@@ -20,18 +20,23 @@ export function getDirectory(path: string): string {
 }
 
 /**
- * Encode file path for URL (percent-encode spaces and special characters)
- * Preserves directory separators and drive letters (e.g., C:)
+ * Encode file path for URL (for Tauri's convertFileSrc)
+ * On Windows, convertFileSrc requires:
+ * - Backslashes converted to forward slashes
+ * - Drive letter (C:) removed
+ * - Path segments URL-encoded
+ * See: https://github.com/tauri-apps/tauri/issues/7970
  */
 export function encodePathForUrl(path: string): string {
-  return path
-    .split(/([/\\])/)
-    .map(segment => {
-      // Keep separators and drive letters (C:) as-is
-      if (segment === '/' || segment === '\\' || /^[A-Za-z]:$/.test(segment)) {
-        return segment
-      }
-      return encodeURIComponent(segment)
-    })
-    .join('')
+  // Windows: convert backslashes to forward slashes
+  let normalized = path.replace(/\\/g, '/')
+
+  // Windows: remove drive letter (e.g., C:/)
+  normalized = normalized.replace(/^[A-Za-z]:\//, '')
+
+  // URL-encode each path segment (preserve slashes)
+  return normalized
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/')
 }
