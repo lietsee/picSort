@@ -71,15 +71,20 @@ function appReducer(state: AppState, action: AppAction): AppState {
       if (state.images.some(img => img.path === newImage.path)) {
         return state
       }
+      // 現在表示中のファイルのパスを記憶
+      const currentImagePath = state.images[state.currentIndex]?.path
       // 適切な位置に挿入（ソート順を維持）
       const newImages = [...state.images, newImage].sort((a, b) =>
         a.name.localeCompare(b.name)
       )
-      // currentIndexを調整（挿入位置が現在位置以下なら+1）
-      const insertedIndex = newImages.findIndex(img => img.path === newImage.path)
-      const newIndex = insertedIndex <= state.currentIndex
-        ? state.currentIndex + 1
-        : state.currentIndex
+      // 現在表示中だったファイルの新しいインデックスを探す
+      let newIndex = state.currentIndex
+      if (currentImagePath) {
+        const foundIndex = newImages.findIndex(img => img.path === currentImagePath)
+        if (foundIndex !== -1) {
+          newIndex = foundIndex
+        }
+      }
       return {
         ...state,
         images: newImages,
