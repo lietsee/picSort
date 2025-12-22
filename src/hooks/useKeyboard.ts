@@ -68,13 +68,13 @@ export function useKeyboard({
 
       // 矢印キー・A/D・スペース・Backspace: 画像移動
       // 動画再生中は矢印キーはMediaViewerが処理するのでスキップ
-      if (key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'Backspace') {
+      if (key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'Backspace' || key === 'p' || key === 'P') {
         if (isVideo && key === 'ArrowLeft') return // 動画時は←をスキップ
         onNavigate('prev')
         return
       }
 
-      if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === ' ') {
+      if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === ' ' || key === 'n' || key === 'N') {
         if (isVideo && key === 'ArrowRight') return // 動画時は→をスキップ
         onNavigate('next')
         return
