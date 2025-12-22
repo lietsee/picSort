@@ -336,17 +336,14 @@ function AppContent() {
           }
         } else if (type === 'Removed') {
           // ファイルが削除された場合、画像リストから削除
-          const removedIndex = state.images.findIndex((img) => img.path === path)
-          if (removedIndex !== -1) {
-            dispatch({ type: 'SET_IMAGES', payload: state.images.filter((img) => img.path !== path) })
-            dispatch({
-              type: 'SET_STATUS',
-              payload: {
-                status: 'idle',
-                message: t('status.fileRemoved', { name: fileName }),
-              },
-            })
-          }
+          dispatch({ type: 'REMOVE_IMAGE_BY_PATH', payload: path })
+          dispatch({
+            type: 'SET_STATUS',
+            payload: {
+              status: 'idle',
+              message: t('status.fileRemoved', { name: fileName }),
+            },
+          })
         }
       })
     }
@@ -358,7 +355,7 @@ function AppContent() {
         unlistenRef.current()
       }
     }
-  }, [state.sourceFolder, state.images, scanImages, dispatch, t])
+  }, [state.sourceFolder, scanImages, dispatch, t])
 
   // ウィンドウ状態保存（終了時）
   useEffect(() => {

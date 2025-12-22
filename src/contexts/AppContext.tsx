@@ -44,6 +44,27 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
+    case 'REMOVE_IMAGE_BY_PATH': {
+      const pathToRemove = action.payload
+      const removeIndex = state.images.findIndex(img => img.path === pathToRemove)
+      if (removeIndex === -1) {
+        return state // 既に削除済み
+      }
+      const newImages = state.images.filter(img => img.path !== pathToRemove)
+      // currentIndexを適切に調整
+      let newIndex = state.currentIndex
+      if (removeIndex < state.currentIndex) {
+        newIndex = state.currentIndex - 1
+      } else if (removeIndex === state.currentIndex) {
+        newIndex = Math.min(state.currentIndex, newImages.length - 1)
+      }
+      return {
+        ...state,
+        images: newImages,
+        currentIndex: Math.max(0, newIndex),
+      }
+    }
+
     case 'SET_DESTINATION':
       return {
         ...state,
