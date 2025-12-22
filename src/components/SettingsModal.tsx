@@ -81,7 +81,7 @@ export function SettingsModal({
         <section className="settings-section">
           <h3>{t('settings.destinations')}</h3>
           <div className="settings-destinations">
-            {(['1', '2', '3', '4', '5'] as const).map((key) => (
+            {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => (
               <div key={key} className="settings-dest-row">
                 <span className="settings-dest-key">{key}</span>
                 <span className="settings-dest-path" title={destinations[key] || undefined}>

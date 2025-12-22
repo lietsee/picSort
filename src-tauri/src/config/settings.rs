@@ -54,9 +54,10 @@ fn default_show_welcome() -> bool {
 impl Default for Settings {
     fn default() -> Self {
         let mut destinations = HashMap::new();
-        for i in 1..=5 {
+        for i in 1..=9 {
             destinations.insert(i.to_string(), None);
         }
+        destinations.insert("0".to_string(), None);
 
         Self {
             destinations,

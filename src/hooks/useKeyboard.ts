@@ -59,8 +59,8 @@ export function useKeyboard({
         return
       }
 
-      // 数字キー（1-5）: 仕分け（リピート無効）
-      if (['1', '2', '3', '4', '5'].includes(key)) {
+      // 数字キー（1-9, 0）: 仕分け（リピート無効）
+      if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
         if (event.repeat) return // キーリピート無効
         onMove(key)
         return

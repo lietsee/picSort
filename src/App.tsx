@@ -533,7 +533,7 @@ function AppContent() {
       </main>
 
       <aside className="app-sidebar">
-        {(['1', '2', '3', '4', '5'] as const).map((key) => (
+        {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => (
           <DestButton
             key={key}
             keyNum={key}
