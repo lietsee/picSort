@@ -18,3 +18,20 @@ export function getDirectory(path: string): string {
   }
   return path.replace(/[\\/][^\\/]+$/, '')
 }
+
+/**
+ * Encode file path for URL (percent-encode spaces and special characters)
+ * Preserves directory separators and drive letters (e.g., C:)
+ */
+export function encodePathForUrl(path: string): string {
+  return path
+    .split(/([/\\])/)
+    .map(segment => {
+      // Keep separators and drive letters (C:) as-is
+      if (segment === '/' || segment === '\\' || /^[A-Za-z]:$/.test(segment)) {
+        return segment
+      }
+      return encodeURIComponent(segment)
+    })
+    .join('')
+}

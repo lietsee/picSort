@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { convertFileSrc } from '@tauri-apps/api/core'
 import { useLanguage } from '../contexts/LanguageContext'
+import { encodePathForUrl } from '../utils/path'
 import type { ImageInfo } from '../types'
 
 interface ImageViewerProps {
@@ -24,7 +25,7 @@ export function ImageViewer({ image, nextImage, loading = false }: ImageViewerPr
   useEffect(() => {
     if (nextImage) {
       const img = new Image()
-      img.src = convertFileSrc(nextImage.path)
+      img.src = convertFileSrc(encodePathForUrl(nextImage.path))
     }
   }, [nextImage])
 
@@ -54,7 +55,8 @@ export function ImageViewer({ image, nextImage, loading = false }: ImageViewerPr
   }
 
   // Tauri 2.x: use convertFileSrc for local files
-  const src = convertFileSrc(image.path)
+  // Encode path to handle spaces and special characters
+  const src = convertFileSrc(encodePathForUrl(image.path))
 
   return (
     <div className="image-viewer">
