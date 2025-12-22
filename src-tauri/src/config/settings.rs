@@ -6,8 +6,11 @@ use std::path::Path;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
+    #[serde(alias = "System")]
     System,
+    #[serde(alias = "Light")]
     Light,
+    #[serde(alias = "Dark")]
     Dark,
 }
 
