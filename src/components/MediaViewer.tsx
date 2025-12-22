@@ -14,6 +14,7 @@ interface MediaViewerProps {
 const MAX_SCALE = 3 // 元サイズの3倍まで
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'mkv', 'avi', 'ogv']
 const SEEK_SECONDS = 30
+const SEEK_SECONDS_SHORT = 5
 const VOLUME_STEP = 0.05
 
 function isVideoFile(path: string): boolean {
@@ -106,6 +107,16 @@ export function MediaViewer({
         case 'ArrowDown':
           event.preventDefault()
           setVolume(v => Math.max(v - VOLUME_STEP, 0))
+          break
+
+        case ';':
+          event.preventDefault()
+          video.currentTime = Math.max(video.currentTime - SEEK_SECONDS_SHORT, 0)
+          break
+
+        case "'":
+          event.preventDefault()
+          video.currentTime = Math.min(video.currentTime + SEEK_SECONDS_SHORT, video.duration)
           break
       }
     },
