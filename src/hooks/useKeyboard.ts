@@ -7,6 +7,7 @@ interface UseKeyboardOptions {
   onOpenSettings?: () => void
   onUndo?: () => void
   onRedo?: () => void
+  isVideo?: boolean // 動画再生中は矢印キーのナビゲーションをスキップ
 }
 
 export function useKeyboard({
@@ -16,6 +17,7 @@ export function useKeyboard({
   onOpenSettings,
   onUndo,
   onRedo,
+  isVideo = false,
 }: UseKeyboardOptions) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -65,13 +67,21 @@ export function useKeyboard({
       }
 
       // 矢印キー・A/D・スペース・Backspace: 画像移動
+      // 動画再生中は矢印キーはMediaViewerが処理するのでスキップ
       if (key === 'ArrowLeft' || key === 'a' || key === 'A' || key === 'Backspace') {
+        if (isVideo && key === 'ArrowLeft') return // 動画時は←をスキップ
         onNavigate('prev')
         return
       }
 
       if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === ' ') {
+        if (isVideo && key === 'ArrowRight') return // 動画時は→をスキップ
         onNavigate('next')
+        return
+      }
+
+      // 動画時の↑↓はMediaViewerが処理するのでスキップ
+      if (isVideo && (key === 'ArrowUp' || key === 'ArrowDown')) {
         return
       }
 
@@ -87,7 +97,7 @@ export function useKeyboard({
         return
       }
     },
-    [onMove, onNavigate, onToggleFullscreen, onOpenSettings, onUndo, onRedo]
+    [onMove, onNavigate, onToggleFullscreen, onOpenSettings, onUndo, onRedo, isVideo]
   )
 
   useEffect(() => {

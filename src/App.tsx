@@ -11,7 +11,7 @@ import { useTauriCommands } from './hooks/useTauriCommands'
 import { useHistory } from './hooks/useHistory'
 import { Header } from './components/Header'
 import { DestButton } from './components/DestButton'
-import { ImageViewer } from './components/ImageViewer'
+import { MediaViewer } from './components/MediaViewer'
 import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
 import { SettingsModal } from './components/SettingsModal'
@@ -33,6 +33,7 @@ function AppContent() {
   const isInitializedRef = useRef(false)
   const [showWelcome, setShowWelcome] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [isVideo, setIsVideo] = useState(false)
   const settingsRef = useRef<Settings | null>(null)
   const unlistenRef = useRef<UnlistenFn | null>(null)
 
@@ -459,6 +460,7 @@ function AppContent() {
     onOpenSettings: handleOpenSettings,
     onUndo: handleUndo,
     onRedo: handleRedo,
+    isVideo,
   })
 
   const displayIndex = state.images.length > 0 ? state.currentIndex + 1 : 0
@@ -489,10 +491,12 @@ function AppContent() {
       />
 
       <main className="app-main">
-        <ImageViewer
-          image={currentImage}
-          nextImage={nextImage}
+        <MediaViewer
+          media={currentImage}
+          nextMedia={nextImage}
           loading={state.status === 'loading'}
+          onNavigate={handleNavigate}
+          onIsVideoChange={setIsVideo}
         />
 
         {state.images.length > 0 && (

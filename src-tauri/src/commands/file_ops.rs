@@ -14,7 +14,12 @@ pub struct ImageInfo {
     pub modified_at: Option<i64>,
 }
 
-const SUPPORTED_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp"];
+const SUPPORTED_EXTENSIONS: &[&str] = &[
+    // 画像
+    "jpg", "jpeg", "png", "gif", "bmp", "webp",
+    // 動画
+    "mp4", "webm", "mov", "mkv", "avi", "ogv",
+];
 
 /// 重複しないユニークなファイルパスを生成する
 fn generate_unique_path(folder: &str, file_name: &str) -> Result<String, String> {

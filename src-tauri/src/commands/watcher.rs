@@ -173,17 +173,22 @@ fn collect_event(pending: &mut HashMap<String, PendingEvent>, event: Event) {
         return;
     }
 
-    // 画像ファイルのみ処理
-    let image_extensions = ["jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"];
-    let image_paths: Vec<String> = paths
+    // メディアファイルのみ処理（画像＋動画）
+    let media_extensions = [
+        // 画像
+        "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif",
+        // 動画
+        "mp4", "webm", "mov", "mkv", "avi", "ogv",
+    ];
+    let media_paths: Vec<String> = paths
         .into_iter()
         .filter(|p| {
             let lower = p.to_lowercase();
-            image_extensions.iter().any(|ext| lower.ends_with(ext))
+            media_extensions.iter().any(|ext| lower.ends_with(ext))
         })
         .collect();
 
-    for path in image_paths {
+    for path in media_paths {
         let event_type = match event.kind {
             EventKind::Create(_) => Some(PendingEventType::Created),
             EventKind::Modify(_) => Some(PendingEventType::Modified),
