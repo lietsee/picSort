@@ -1,6 +1,29 @@
 import { createContext, useContext, useReducer, ReactNode } from 'react'
 import type { AppState, AppAction } from '../types'
 
+// 自然順ソート比較関数（Rustのnatordと同等）
+function naturalCompare(a: string, b: string): number {
+  const re = /(\d+)|(\D+)/g
+  const aParts = a.match(re) || []
+  const bParts = b.match(re) || []
+
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    const aPart = aParts[i] || ''
+    const bPart = bParts[i] || ''
+
+    const aNum = parseInt(aPart, 10)
+    const bNum = parseInt(bPart, 10)
+
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      if (aNum !== bNum) return aNum - bNum
+    } else {
+      const cmp = aPart.localeCompare(bPart)
+      if (cmp !== 0) return cmp
+    }
+  }
+  return 0
+}
+
 const initialState: AppState = {
   sourceFolder: null,
   images: [],
@@ -73,9 +96,9 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
       // 現在表示中のファイルのパスを記憶
       const currentImagePath = state.images[state.currentIndex]?.path
-      // 適切な位置に挿入（ソート順を維持）
+      // 適切な位置に挿入（自然順ソートを維持）
       const newImages = [...state.images, newImage].sort((a, b) =>
-        a.name.localeCompare(b.name)
+        naturalCompare(a.name, b.name)
       )
       // 現在表示中だったファイルの新しいインデックスを探す
       let newIndex = state.currentIndex
