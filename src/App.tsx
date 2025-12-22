@@ -37,6 +37,7 @@ function AppContent() {
   const settingsRef = useRef<Settings | null>(null)
   const unlistenRef = useRef<UnlistenFn | null>(null)
   const isUndoRedoInProgress = useRef(false)
+  const settingsLoadedRef = useRef(false)
 
   // 設定ファイルパスを取得して設定を読み込む
   useEffect(() => {
@@ -77,9 +78,13 @@ function AppContent() {
         if (settings.showWelcome !== false) {
           setShowWelcome(true)
         }
+
+        // 設定読み込み完了
+        settingsLoadedRef.current = true
       } catch {
         // 設定ファイルが存在しない場合は初回起動
         setShowWelcome(true)
+        settingsLoadedRef.current = true
       }
     }
 
@@ -89,7 +94,7 @@ function AppContent() {
   // 分別先/分別元が変更されたら設定を保存
   useEffect(() => {
     const saveCurrentSettings = async () => {
-      if (!configPathRef.current || !isInitializedRef.current) return
+      if (!configPathRef.current || !settingsLoadedRef.current) return
 
       const settings: Settings = {
         destinations: state.destinations,
@@ -107,8 +112,8 @@ function AppContent() {
       }
     }
 
-    // 初期化後のみ保存
-    if (isInitializedRef.current) {
+    // 設定読み込み完了後のみ保存
+    if (settingsLoadedRef.current) {
       saveCurrentSettings()
     }
   }, [state.destinations, state.sourceFolder, saveSettings])
