@@ -88,6 +88,15 @@ pub fn load_settings(config_path: String) -> Result<Settings, String> {
 /// 設定を保存する
 #[tauri::command]
 pub fn save_settings(settings: Settings, config_path: String) -> Result<(), String> {
+    let path = Path::new(&config_path);
+
+    // 親ディレクトリが存在しない場合は作成
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+
     let content = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
     fs::write(&config_path, content).map_err(|e| e.to_string())?;
 
