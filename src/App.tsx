@@ -36,6 +36,7 @@ function AppContent() {
   const [isVideo, setIsVideo] = useState(false)
   const settingsRef = useRef<Settings | null>(null)
   const unlistenRef = useRef<UnlistenFn | null>(null)
+  const isUndoRedoInProgress = useRef(false)
 
   // 設定ファイルパスを取得して設定を読み込む
   useEffect(() => {
@@ -333,6 +334,11 @@ function AppContent() {
       }
 
       unlistenRef.current = await listen<FsChangeEvent>('fs-change', async (event) => {
+        // Undo/Redo実行中はイベントを無視
+        if (isUndoRedoInProgress.current) {
+          return
+        }
+
         const { type, path } = event.payload
         const fileName = getFileName(path)
 
@@ -423,6 +429,9 @@ function AppContent() {
     const item = undo()
     if (!item) return
 
+    // ファイルウォッチャーイベントを一時的に無視
+    isUndoRedoInProgress.current = true
+
     try {
       await undoMove(item.destPath, item.sourceFolder)
       // リストにファイルを追加（再スキャンせずにインデックスを保持）
@@ -440,6 +449,11 @@ function AppContent() {
         type: 'SET_STATUS',
         payload: { status: 'error', message: t('status.undoError', { error: String(error) }) },
       })
+    } finally {
+      // デバウンス(500ms)より長く待ってからフラグを解除
+      setTimeout(() => {
+        isUndoRedoInProgress.current = false
+      }, 600)
     }
   }, [canUndo, undo, undoMove, dispatch, t])
 
@@ -448,6 +462,9 @@ function AppContent() {
 
     const item = redo()
     if (!item) return
+
+    // ファイルウォッチャーイベントを一時的に無視
+    isUndoRedoInProgress.current = true
 
     // Redo: ファイルを再度移動（sourcePath はファイルのフルパス）
     try {
@@ -465,6 +482,11 @@ function AppContent() {
         type: 'SET_STATUS',
         payload: { status: 'error', message: t('status.redoError', { error: String(error) }) },
       })
+    } finally {
+      // デバウンス(500ms)より長く待ってからフラグを解除
+      setTimeout(() => {
+        isUndoRedoInProgress.current = false
+      }, 600)
     }
   }, [canRedo, redo, moveFile, dispatch, t])
 
