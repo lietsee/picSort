@@ -91,9 +91,12 @@ export function MediaViewer({
 
         case 'ArrowLeft':
           event.preventDefault()
-          // 先頭に近い場合は前のファイルへ
           if (video.currentTime <= 0.5) {
-            onNavigate?.('prev')
+            if (video.paused) {
+              onNavigate?.('prev') // 停止中なら前のファイルへ
+            } else {
+              video.pause() // 再生中なら停止
+            }
           } else {
             video.currentTime = Math.max(video.currentTime - SEEK_SECONDS, 0)
           }
@@ -112,11 +115,27 @@ export function MediaViewer({
         case ';':
           event.preventDefault()
           video.currentTime = Math.max(video.currentTime - SEEK_SECONDS_SHORT, 0)
+          if (video.currentTime === 0) {
+            if (video.paused) {
+              onNavigate?.('prev') // 停止中なら前のファイルへ
+            } else {
+              video.pause() // 再生中なら停止
+            }
+          }
           break
 
         case "'":
           event.preventDefault()
           video.currentTime = Math.min(video.currentTime + SEEK_SECONDS_SHORT, video.duration)
+          break
+
+        case ' ':
+          event.preventDefault()
+          if (video.paused) {
+            video.play()
+          } else {
+            video.pause()
+          }
           break
       }
     },

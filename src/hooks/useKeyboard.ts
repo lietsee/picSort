@@ -75,7 +75,7 @@ export function useKeyboard({
       }
 
       if (key === 'ArrowRight' || key === 'd' || key === 'D' || key === ' ' || key === 'n' || key === 'N') {
-        if (isVideo && key === 'ArrowRight') return // 動画時は→をスキップ
+        if (isVideo && (key === 'ArrowRight' || key === ' ')) return // 動画時は→とスペースをスキップ
         onNavigate('next')
         return
       }
