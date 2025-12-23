@@ -124,7 +124,7 @@ mod tests {
         // Assert: デフォルト設定が返る
         assert!(result.is_ok());
         let settings = result.unwrap();
-        assert_eq!(settings.destinations.len(), 5);
+        assert_eq!(settings.destinations.len(), 10);
         assert!(settings.destinations.values().all(|v| v.is_none()));
         assert_eq!(settings.language, "ja");
         assert!(matches!(settings.theme, Theme::System));
