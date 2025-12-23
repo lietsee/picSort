@@ -411,4 +411,144 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("not found"));
     }
+
+    // ===== 絵文字・機種依存文字テスト =====
+
+    #[test]
+    fn test_scan_images_emoji_filename() {
+        // Arrange: 絵文字を含むファイル名
+        let dir = tempdir().unwrap();
+
+        File::create(dir.path().join("🎉test🎨.jpg")).unwrap();
+        File::create(dir.path().join("写真📷.png")).unwrap();
+        File::create(dir.path().join("✨キラキラ✨.gif")).unwrap();
+
+        // Act: scan_images を実行
+        let result = scan_images(dir.path().to_string_lossy().to_string());
+
+        // Assert: 全て検出される
+        assert!(result.is_ok());
+        let images = result.unwrap();
+        assert_eq!(images.len(), 3);
+
+        // ファイル名が正しく保持されている
+        let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+        assert!(names.contains(&"🎉test🎨.jpg"));
+        assert!(names.contains(&"写真📷.png"));
+        assert!(names.contains(&"✨キラキラ✨.gif"));
+    }
+
+    #[test]
+    fn test_move_file_emoji_filename() {
+        // Arrange: 絵文字を含むファイルを作成
+        let src_dir = tempdir().unwrap();
+        let dest_dir = tempdir().unwrap();
+
+        let src_path = src_dir.path().join("🎵音楽🎵.jpg");
+        File::create(&src_path).unwrap();
+
+        // Act: ファイル移動
+        let result = move_file(
+            src_path.to_string_lossy().to_string(),
+            dest_dir.path().to_string_lossy().to_string(),
+        );
+
+        // Assert: 移動成功、ファイル名が保持される
+        assert!(result.is_ok());
+        let dest_path = result.unwrap();
+        assert!(dest_path.contains("🎵音楽🎵.jpg"));
+        assert!(!src_path.exists());
+        assert!(dest_dir.path().join("🎵音楽🎵.jpg").exists());
+    }
+
+    #[test]
+    fn test_move_file_emoji_with_duplicate() {
+        // Arrange: 絵文字ファイルが移動先に既に存在
+        let src_dir = tempdir().unwrap();
+        let dest_dir = tempdir().unwrap();
+
+        let src_path = src_dir.path().join("📸photo📸.jpg");
+        File::create(&src_path).unwrap();
+        File::create(dest_dir.path().join("📸photo📸.jpg")).unwrap();
+
+        // Act: ファイル移動
+        let result = move_file(
+            src_path.to_string_lossy().to_string(),
+            dest_dir.path().to_string_lossy().to_string(),
+        );
+
+        // Assert: 連番付きで移動、絵文字は保持
+        assert!(result.is_ok());
+        let dest_path = result.unwrap();
+        assert!(dest_path.contains("📸photo📸_1.jpg"));
+        assert!(dest_dir.path().join("📸photo📸_1.jpg").exists());
+    }
+
+    #[test]
+    fn test_undo_move_emoji_filename() {
+        // Arrange: 絵文字ファイルを移動先に配置
+        let original_dir = tempdir().unwrap();
+        let current_dir = tempdir().unwrap();
+
+        let current_path = current_dir.path().join("🌟star🌟.jpg");
+        File::create(&current_path).unwrap();
+
+        // Act: Undo実行
+        let result = undo_move(
+            current_path.to_string_lossy().to_string(),
+            original_dir.path().to_string_lossy().to_string(),
+        );
+
+        // Assert: 元の場所に戻る、ファイル名保持
+        assert!(result.is_ok());
+        let restored_path = result.unwrap();
+        assert!(restored_path.contains("🌟star🌟.jpg"));
+        assert!(!current_path.exists());
+        assert!(original_dir.path().join("🌟star🌟.jpg").exists());
+    }
+
+    #[test]
+    fn test_generate_unique_path_emoji() {
+        // Arrange: 絵文字ファイルが複数存在
+        let dir = tempdir().unwrap();
+        File::create(dir.path().join("🎀ribbon🎀.jpg")).unwrap();
+        File::create(dir.path().join("🎀ribbon🎀_1.jpg")).unwrap();
+
+        // Act: ユニークパス生成
+        let result = generate_unique_path(
+            dir.path().to_str().unwrap(),
+            "🎀ribbon🎀.jpg",
+        );
+
+        // Assert: _2 サフィックスが付く、絵文字保持
+        assert!(result.is_ok());
+        let path = result.unwrap();
+        assert!(path.contains("🎀ribbon🎀_2.jpg"));
+    }
+
+    #[test]
+    fn test_scan_images_special_unicode() {
+        // Arrange: 様々なUnicode文字を含むファイル名
+        let dir = tempdir().unwrap();
+
+        // サロゲートペアを含む絵文字（4バイト文字）
+        File::create(dir.path().join("𠮷野家.jpg")).unwrap();
+        // 結合文字
+        File::create(dir.path().join("café.png")).unwrap();
+        // 全角記号
+        File::create(dir.path().join("【重要】ファイル.gif")).unwrap();
+
+        // Act: scan_images を実行
+        let result = scan_images(dir.path().to_string_lossy().to_string());
+
+        // Assert: 全て正しく検出
+        assert!(result.is_ok());
+        let images = result.unwrap();
+        assert_eq!(images.len(), 3);
+
+        let names: Vec<&str> = images.iter().map(|i| i.name.as_str()).collect();
+        assert!(names.contains(&"𠮷野家.jpg"));
+        assert!(names.contains(&"café.png"));
+        assert!(names.contains(&"【重要】ファイル.gif"));
+    }
 }

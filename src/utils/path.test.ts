@@ -80,4 +80,54 @@ describe('encodePathForUrl', () => {
     expect(encodePathForUrl('photo file.jpg'))
       .toBe('photo%20file.jpg')
   })
+
+  it('encodes emoji in file name', () => {
+    expect(encodePathForUrl('/home/user/🎉photo🎨.jpg'))
+      .toBe('/home/user/%F0%9F%8E%89photo%F0%9F%8E%A8.jpg')
+  })
+
+  it('encodes emoji in Windows path', () => {
+    expect(encodePathForUrl('C:\\Users\\test\\📸写真📸.png'))
+      .toBe('Users/test/%F0%9F%93%B8%E5%86%99%E7%9C%9F%F0%9F%93%B8.png')
+  })
+
+  it('encodes mixed emoji and Japanese', () => {
+    expect(encodePathForUrl('/home/user/✨キラキラ✨画像.jpg'))
+      .toBe('/home/user/%E2%9C%A8%E3%82%AD%E3%83%A9%E3%82%AD%E3%83%A9%E2%9C%A8%E7%94%BB%E5%83%8F.jpg')
+  })
+
+  it('encodes special unicode characters', () => {
+    // サロゲートペアを含む文字（𠮷は2バイトではなく4バイト）
+    expect(encodePathForUrl('/home/user/𠮷野家.jpg'))
+      .toBe('/home/user/%F0%A0%AE%B7%E9%87%8E%E5%AE%B6.jpg')
+  })
+
+  it('encodes full-width brackets', () => {
+    expect(encodePathForUrl('/home/user/【重要】ファイル.png'))
+      .toBe('/home/user/%E3%80%90%E9%87%8D%E8%A6%81%E3%80%91%E3%83%95%E3%82%A1%E3%82%A4%E3%83%AB.png')
+  })
+})
+
+describe('getFileName with emoji', () => {
+  it('extracts emoji file name from Unix path', () => {
+    expect(getFileName('/Users/test/images/🎉photo🎨.jpg')).toBe('🎉photo🎨.jpg')
+  })
+
+  it('extracts emoji file name from Windows path', () => {
+    expect(getFileName('C:\\Users\\test\\📸写真📸.png')).toBe('📸写真📸.png')
+  })
+
+  it('handles complex emoji with Japanese', () => {
+    expect(getFileName('/path/to/✨キラキラ✨.gif')).toBe('✨キラキラ✨.gif')
+  })
+})
+
+describe('getDirectory with emoji', () => {
+  it('extracts directory with emoji folder name', () => {
+    expect(getDirectory('/Users/test/📁フォルダ/photo.jpg')).toBe('/Users/test/📁フォルダ')
+  })
+
+  it('handles emoji in both folder and file', () => {
+    expect(getDirectory('/Users/🎨アート/🖼️絵.png')).toBe('/Users/🎨アート')
+  })
 })
