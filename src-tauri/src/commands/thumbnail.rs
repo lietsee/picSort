@@ -45,6 +45,7 @@ fn get_thumbnail_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Could not determine app cache directory: {}", e))?
         .join("thumbnails");
 
+    info!("Thumbnail cache dir: {:?}", cache_dir);
     fs::create_dir_all(&cache_dir).map_err(|e| format!("Failed to create cache directory: {}", e))?;
     Ok(cache_dir)
 }
@@ -134,10 +135,11 @@ pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Res
 
         if let (Some(orig), Some(thumb)) = (orig_modified, thumb_modified) {
             if thumb > orig {
-                debug!("Using cached thumbnail for: {}", path);
+                let thumb_path_str = thumb_path.to_string_lossy().to_string();
+                debug!("Using cached thumbnail for: {} -> {}", path, thumb_path_str);
                 return Ok(ThumbnailResult {
                     original_path: path,
-                    thumbnail_path: thumb_path.to_string_lossy().to_string(),
+                    thumbnail_path: thumb_path_str,
                 });
             }
         }
@@ -152,9 +154,11 @@ pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Res
         generate_image_thumbnail(src_path, &thumb_path, size)?;
     }
 
+    let thumb_path_str = thumb_path.to_string_lossy().to_string();
+    info!("Generated thumbnail: {} -> {}", path, thumb_path_str);
     Ok(ThumbnailResult {
         original_path: path,
-        thumbnail_path: thumb_path.to_string_lossy().to_string(),
+        thumbnail_path: thumb_path_str,
     })
 }
 

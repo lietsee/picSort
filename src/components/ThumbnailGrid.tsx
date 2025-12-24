@@ -68,8 +68,8 @@ function Cell({
       {...ariaAttributes}
       style={{
         ...style,
-        left: Number(style.left) + PADDING,
-        top: Number(style.top) + PADDING,
+        left: (Number(style.left) || 0) + PADDING,
+        top: (Number(style.top) || 0) + PADDING,
         width: thumbnailSize,
         height: thumbnailSize,
       }}
