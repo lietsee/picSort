@@ -28,6 +28,13 @@ export const ThumbnailItem = memo(function ThumbnailItem({
     thumbnailUrl ? 'loaded' : 'pending'
   )
 
+  // image.path が変わったら state をリセット（react-windowのセル再利用対策）
+  useEffect(() => {
+    const cached = getCachedThumbnail(image.path)
+    setThumbnailUrl(cached)
+    setStatus(cached ? 'loaded' : 'pending')
+  }, [image.path, getCachedThumbnail])
+
   useEffect(() => {
     // 既にロード済みならスキップ
     if (thumbnailUrl) return
