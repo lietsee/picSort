@@ -22,7 +22,7 @@ export function ImageViewer({ image, nextImage, loading = false }: ImageViewerPr
 
   // 次の画像を先読み
   useEffect(() => {
-    if (nextImage) {
+    if (nextImage?.path) {
       const img = new Image()
       img.src = convertFileSrc(nextImage.path)
     }

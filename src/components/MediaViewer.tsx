@@ -56,7 +56,7 @@ export function MediaViewer({
 
   // 次の画像を先読み（動画は先読みしない）
   useEffect(() => {
-    if (nextMedia && !isVideoFile(nextMedia.path)) {
+    if (nextMedia?.path && !isVideoFile(nextMedia.path)) {
       const img = new Image()
       img.src = convertFileSrc(nextMedia.path)
     }
