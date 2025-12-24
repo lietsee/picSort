@@ -3,6 +3,26 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+// マッチング用単語リスト
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WordListEntry {
+    #[serde(rename = "type")]
+    pub entry_type: String, // "work" | "character"
+    pub canonical: String,
+    pub aliases: Vec<String>,
+    pub canonical_normalized: String,
+    pub aliases_normalized: Vec<String>,
+    pub search_keys_normalized: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WordList {
+    pub file_name: String,
+    pub entries: Vec<WordListEntry>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
@@ -49,6 +69,8 @@ pub struct Settings {
     #[serde(default, rename = "sourceFolder")]
     pub source_folder: Option<String>,
     pub window: WindowSettings,
+    #[serde(default, rename = "wordLists")]
+    pub word_lists: HashMap<String, Option<WordList>>,
 }
 
 fn default_show_welcome() -> bool {
@@ -63,6 +85,12 @@ impl Default for Settings {
         }
         destinations.insert("0".to_string(), None);
 
+        let mut word_lists = HashMap::new();
+        for i in 1..=9 {
+            word_lists.insert(i.to_string(), None);
+        }
+        word_lists.insert("0".to_string(), None);
+
         Self {
             destinations,
             theme: Theme::default(),
@@ -70,6 +98,7 @@ impl Default for Settings {
             show_welcome: true,
             source_folder: None,
             window: WindowSettings::default(),
+            word_lists,
         }
     }
 }
@@ -126,6 +155,8 @@ mod tests {
         let settings = result.unwrap();
         assert_eq!(settings.destinations.len(), 10);
         assert!(settings.destinations.values().all(|v| v.is_none()));
+        assert_eq!(settings.word_lists.len(), 10);
+        assert!(settings.word_lists.values().all(|v| v.is_none()));
         assert_eq!(settings.language, "ja");
         assert!(matches!(settings.theme, Theme::System));
     }

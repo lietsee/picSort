@@ -231,6 +231,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
+    case 'SELECT_MATCHING_FILES': {
+      const matchingPaths = action.payload
+      // 現在の選択に追加（重複除去）
+      const newSelectedPaths = [...new Set([...state.selectedPaths, ...matchingPaths])]
+      return {
+        ...state,
+        selectedPaths: newSelectedPaths,
+        lastSelectedIndex: matchingPaths.length > 0
+          ? state.images.findIndex(img => img.path === matchingPaths[matchingPaths.length - 1])
+          : state.lastSelectedIndex,
+      }
+    }
+
     default:
       return state
   }

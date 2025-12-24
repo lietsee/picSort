@@ -16,8 +16,10 @@ import { ThumbnailGrid } from './components/ThumbnailGrid'
 import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
 import { SettingsModal } from './components/SettingsModal'
-import type { Settings } from './types'
+import type { Settings, WordList } from './types'
 import { getFileName } from './utils/path'
+import { loadWordListFromFile } from './utils/csv'
+import { isFileMatching } from './utils/matching'
 
 // ファイルシステム変更イベントの型
 interface FsChangeEvent {
@@ -35,6 +37,7 @@ function AppContent() {
   const [showWelcome, setShowWelcome] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [isVideo, setIsVideo] = useState(false)
+  const [wordLists, setWordLists] = useState<Record<string, WordList | null>>({})
   const settingsRef = useRef<Settings | null>(null)
   const unlistenRef = useRef<UnlistenFn | null>(null)
   const isUndoRedoInProgress = useRef(false)
@@ -69,6 +72,12 @@ function AppContent() {
           }
         })
 
+        // 単語リストを復元
+        if (settings.wordLists) {
+          console.log('[Settings] restoring wordLists:', Object.keys(settings.wordLists))
+          setWordLists(settings.wordLists)
+        }
+
         // 分別元フォルダを復元
         if (settings.sourceFolder) {
           console.log('[Settings] restoring sourceFolder:', settings.sourceFolder)
@@ -101,7 +110,7 @@ function AppContent() {
     initSettings()
   }, [dispatch, loadSettings, scanImages])
 
-  // 分別先/分別元が変更されたら設定を保存
+  // 分別先/分別元/単語リストが変更されたら設定を保存
   useEffect(() => {
     const saveCurrentSettings = async () => {
       console.log('[Settings] saveCurrentSettings called, configPath:', configPathRef.current, 'settingsLoaded:', settingsLoadedRef.current)
@@ -117,6 +126,7 @@ function AppContent() {
         showWelcome: settingsRef.current?.showWelcome ?? true,
         sourceFolder: state.sourceFolder,
         window: { width: 1280, height: 800, x: null, y: null },
+        wordLists,
       }
 
       console.log('[Settings] saving settings:', JSON.stringify(settings, null, 2))
@@ -133,7 +143,7 @@ function AppContent() {
     if (settingsLoadedRef.current) {
       saveCurrentSettings()
     }
-  }, [state.destinations, state.sourceFolder, saveSettings])
+  }, [state.destinations, state.sourceFolder, wordLists, saveSettings])
 
   const currentImage =
     state.images.length > 0 ? state.images[state.currentIndex] : null
@@ -324,6 +334,62 @@ function AppContent() {
     setShowSettings(false)
   }, [])
 
+  const handleLoadWordList = useCallback(async (key: string) => {
+    const selected = await open({
+      filters: [{ name: 'CSV', extensions: ['csv'] }],
+      multiple: false,
+    })
+
+    if (selected) {
+      try {
+        const wordList = await loadWordListFromFile(selected as string)
+        setWordLists(prev => ({ ...prev, [key]: wordList }))
+        dispatch({
+          type: 'SET_STATUS',
+          payload: { status: 'success', message: t('status.wordListLoaded', { name: wordList.fileName }) },
+        })
+      } catch (error) {
+        dispatch({
+          type: 'SET_STATUS',
+          payload: { status: 'error', message: t('status.wordListError', { error: String(error) }) },
+        })
+      }
+    }
+  }, [dispatch, t])
+
+  const handleClearWordList = useCallback((key: string) => {
+    setWordLists(prev => ({ ...prev, [key]: null }))
+  }, [])
+
+  const handleMatchingSelect = useCallback((key: string) => {
+    const wordList = wordLists[key]
+    if (!wordList) return
+
+    // グリッドモード時のみ動作
+    if (state.viewMode !== 'grid') return
+
+    // マッチするファイルを検索
+    const matchingPaths = state.images
+      .filter(img => isFileMatching(img.path, wordList))
+      .map(img => img.path)
+
+    if (matchingPaths.length > 0) {
+      dispatch({ type: 'SELECT_MATCHING_FILES', payload: matchingPaths })
+      dispatch({
+        type: 'SET_STATUS',
+        payload: {
+          status: 'success',
+          message: t('status.matchingFilesSelected', { count: matchingPaths.length }),
+        },
+      })
+    } else {
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'warning', message: t('status.noMatchingFiles') },
+      })
+    }
+  }, [wordLists, state.viewMode, state.images, dispatch, t])
+
   const handleDontShowWelcomeAgain = useCallback(async () => {
     if (!configPathRef.current) return
 
@@ -426,6 +492,7 @@ function AppContent() {
             x: position.x,
             y: position.y,
           },
+          wordLists,
         }
 
         await saveSettings(settings, configPathRef.current)
@@ -615,8 +682,11 @@ function AppContent() {
         isOpen={showSettings}
         onClose={handleCloseSettings}
         destinations={state.destinations}
+        wordLists={wordLists}
         onSelectDestination={handleSelectDestination}
         onClearDestination={(key) => dispatch({ type: 'SET_DESTINATION', payload: { key, path: null } })}
+        onLoadWordList={handleLoadWordList}
+        onClearWordList={handleClearWordList}
       />
       <Header
         title="picSort"
@@ -676,17 +746,26 @@ function AppContent() {
       )}
 
       <aside className="app-sidebar">
-        {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => (
-          <DestButton
-            key={key}
-            keyNum={key}
-            path={state.destinations[key]}
-            onSelect={() => handleSelectDestination(key)}
-            onClear={() => dispatch({ type: 'SET_DESTINATION', payload: { key, path: null } })}
-            disabled={!currentImage}
-            lastUsed={state.lastUsedDestination === key}
-          />
-        ))}
+        {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => {
+          // Single mode: 現在の画像がこの分別先の単語リストとマッチするか判定
+          const isMatching = state.viewMode === 'single' && currentImage && wordLists[key]
+            ? isFileMatching(currentImage.path, wordLists[key]!)
+            : false
+
+          return (
+            <DestButton
+              key={key}
+              keyNum={key}
+              path={state.destinations[key]}
+              onSelect={() => handleSelectDestination(key)}
+              onClear={() => dispatch({ type: 'SET_DESTINATION', payload: { key, path: null } })}
+              onMatchingSelect={() => handleMatchingSelect(key)}
+              disabled={state.viewMode === 'single' && !currentImage}
+              lastUsed={state.lastUsedDestination === key}
+              matching={isMatching}
+            />
+          )
+        })}
       </aside>
 
       <footer className="app-footer">

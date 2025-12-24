@@ -1,12 +1,16 @@
 import { useTheme, Theme } from '../contexts/ThemeContext'
 import { useLanguage, Language } from '../contexts/LanguageContext'
+import type { WordList } from '../types'
 
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
   destinations: Record<string, string | null>
+  wordLists: Record<string, WordList | null>
   onSelectDestination: (key: string) => void
   onClearDestination: (key: string) => void
+  onLoadWordList: (key: string) => void
+  onClearWordList: (key: string) => void
 }
 
 const KEYBINDING_KEYS = [
@@ -27,12 +31,22 @@ const VIDEO_KEYBINDING_KEYS = [
   { key: '↑ / ↓', descKey: 'shortcuts.videoVolume' },
 ]
 
+const GRID_KEYBINDING_KEYS = [
+  { key: 'G', descKey: 'shortcuts.toggleGridMode' },
+  { key: 'Ctrl+A', descKey: 'shortcuts.selectAll' },
+  { key: 'Escape', descKey: 'shortcuts.clearSelection' },
+  { key: 'RShift+Click', descKey: 'shortcuts.matchingSelect' },
+]
+
 export function SettingsModal({
   isOpen,
   onClose,
   destinations,
+  wordLists,
   onSelectDestination,
   onClearDestination,
+  onLoadWordList,
+  onClearWordList,
 }: SettingsModalProps) {
   const { theme, setTheme } = useTheme()
   const { language, setLanguage, t } = useLanguage()
@@ -93,25 +107,50 @@ export function SettingsModal({
             {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => (
               <div key={key} className="settings-dest-row">
                 <span className="settings-dest-key">{key}</span>
-                <span className="settings-dest-path" title={destinations[key] || undefined}>
-                  {destinations[key]?.split('/').pop() || t('destButton.notSet')}
-                </span>
-                <button
-                  className="btn-dest-select"
-                  onClick={() => onSelectDestination(key)}
-                  title={t('settings.selectFolder')}
-                >
-                  📁
-                </button>
-                {destinations[key] && (
+                <div className="settings-dest-info">
+                  <span className="settings-dest-path" title={destinations[key] || undefined}>
+                    {destinations[key]?.split('/').pop() || t('destButton.notSet')}
+                  </span>
+                  {wordLists[key] && (
+                    <span className="settings-dest-wordlist" title={wordLists[key]?.fileName}>
+                      📄 {wordLists[key]?.fileName}
+                    </span>
+                  )}
+                </div>
+                <div className="settings-dest-actions">
                   <button
-                    className="btn-dest-clear"
-                    onClick={() => onClearDestination(key)}
-                    title={t('settings.clearFolder')}
+                    className="btn-dest-select"
+                    onClick={() => onSelectDestination(key)}
+                    title={t('settings.selectFolder')}
                   >
-                    ✕
+                    📁
                   </button>
-                )}
+                  {destinations[key] && (
+                    <button
+                      className="btn-dest-clear"
+                      onClick={() => onClearDestination(key)}
+                      title={t('settings.clearFolder')}
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    className="btn-wordlist-load"
+                    onClick={() => onLoadWordList(key)}
+                    title={t('settings.loadWordList')}
+                  >
+                    📄
+                  </button>
+                  {wordLists[key] && (
+                    <button
+                      className="btn-wordlist-clear"
+                      onClick={() => onClearWordList(key)}
+                      title={t('settings.clearWordList')}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -130,6 +169,15 @@ export function SettingsModal({
           <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>{t('shortcuts.videoSection')}</h4>
           <div className="settings-keybindings">
             {VIDEO_KEYBINDING_KEYS.map(({ key, descKey }) => (
+              <div key={key} className="settings-keybind-row">
+                <kbd className="settings-key">{key}</kbd>
+                <span className="settings-keybind-desc">{t(descKey)}</span>
+              </div>
+            ))}
+          </div>
+          <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>{t('shortcuts.gridSection')}</h4>
+          <div className="settings-keybindings">
+            {GRID_KEYBINDING_KEYS.map(({ key, descKey }) => (
               <div key={key} className="settings-keybind-row">
                 <kbd className="settings-key">{key}</kbd>
                 <span className="settings-keybind-desc">{t(descKey)}</span>

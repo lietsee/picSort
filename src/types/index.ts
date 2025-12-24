@@ -17,6 +17,7 @@ export interface Settings {
     x: number | null
     y: number | null
   }
+  wordLists?: Record<string, WordList | null>
 }
 
 export type Status = 'idle' | 'loading' | 'success' | 'error' | 'warning'
@@ -62,6 +63,21 @@ export interface ThumbnailError {
   error: string
 }
 
+// マッチング用単語リスト
+export interface WordListEntry {
+  type: 'work' | 'character'
+  canonical: string
+  aliases: string[]
+  canonicalNormalized: string
+  aliasesNormalized: string[]
+  searchKeysNormalized: string[]
+}
+
+export interface WordList {
+  fileName: string
+  entries: WordListEntry[]
+}
+
 export type AppAction =
   | { type: 'SET_SOURCE_FOLDER'; payload: string }
   | { type: 'SET_IMAGES'; payload: ImageInfo[] }
@@ -82,3 +98,4 @@ export type AppAction =
   | { type: 'SELECT_ALL' }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'REMOVE_SELECTED_IMAGES' }
+  | { type: 'SELECT_MATCHING_FILES'; payload: string[] }

@@ -37,7 +37,11 @@
     "undone": "Undone",
     "undoError": "Undo failed: {{error}}",
     "redone": "Redone",
-    "redoError": "Redo failed: {{error}}"
+    "redoError": "Redo failed: {{error}}",
+    "wordListLoaded": "Word list loaded: {{name}}",
+    "wordListError": "Failed to load word list: {{error}}",
+    "matchingFilesSelected": "Selected {{count}} matching files",
+    "noMatchingFiles": "No matching files found"
   },
   "grid": {
     "selectedCount": "{{count}} selected",
@@ -54,6 +58,8 @@
     "destinations": "Destination Folders",
     "selectFolder": "Select folder",
     "clearFolder": "Clear",
+    "loadWordList": "Load word list",
+    "clearWordList": "Clear word list",
     "shortcuts": "Keyboard Shortcuts",
     "close": "Close"
   },
@@ -69,7 +75,12 @@
     "videoPlayPause": "Play/Pause",
     "videoSeek30": "Seek 30 seconds",
     "videoSeek5": "Seek 5 seconds",
-    "videoVolume": "Volume control"
+    "videoVolume": "Volume control",
+    "gridSection": "Grid Mode",
+    "toggleGridMode": "Toggle grid mode",
+    "selectAll": "Select all",
+    "clearSelection": "Clear selection",
+    "matchingSelect": "Select matching files"
   },
   "welcome": {
     "title": "Welcome to picSort",

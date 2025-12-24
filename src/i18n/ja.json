@@ -37,7 +37,11 @@
     "undone": "元に戻しました",
     "undoError": "元に戻せませんでした: {{error}}",
     "redone": "やり直しました",
-    "redoError": "やり直せませんでした: {{error}}"
+    "redoError": "やり直せませんでした: {{error}}",
+    "wordListLoaded": "単語リストを読み込みました: {{name}}",
+    "wordListError": "単語リストの読み込みに失敗: {{error}}",
+    "matchingFilesSelected": "{{count}}件のマッチするファイルを選択しました",
+    "noMatchingFiles": "マッチするファイルが見つかりません"
   },
   "grid": {
     "selectedCount": "{{count}}件選択中",
@@ -54,6 +58,8 @@
     "destinations": "分別先フォルダ",
     "selectFolder": "フォルダを選択",
     "clearFolder": "設定を解除",
+    "loadWordList": "単語リストを読み込む",
+    "clearWordList": "単語リストを削除",
     "shortcuts": "キーボードショートカット",
     "close": "閉じる"
   },
@@ -69,7 +75,12 @@
     "videoPlayPause": "再生/一時停止",
     "videoSeek30": "30秒 早送り/巻き戻し",
     "videoSeek5": "5秒 早送り/巻き戻し",
-    "videoVolume": "音量調整"
+    "videoVolume": "音量調整",
+    "gridSection": "グリッドモード",
+    "toggleGridMode": "グリッドモード切替",
+    "selectAll": "すべて選択",
+    "clearSelection": "選択解除",
+    "matchingSelect": "マッチするファイルを選択"
   },
   "welcome": {
     "title": "picSort へようこそ",

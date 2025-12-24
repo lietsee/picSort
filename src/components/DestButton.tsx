@@ -7,9 +7,11 @@ interface DestButtonProps {
   path: string | null
   onSelect: () => void
   onClear?: () => void
+  onMatchingSelect?: () => void
   disabled?: boolean
   active?: boolean
   lastUsed?: boolean
+  matching?: boolean
 }
 
 export function DestButton({
@@ -17,12 +19,24 @@ export function DestButton({
   path,
   onSelect,
   onClear,
+  onMatchingSelect,
   disabled = false,
   active = false,
   lastUsed = false,
+  matching = false,
 }: DestButtonProps) {
   const { t } = useLanguage()
   const folderName = path ? getFileName(path) : t('destButton.notSet')
+
+  const handleClick = (e: React.MouseEvent) => {
+    // 右Shift + 左クリック でマッチング選択
+    if (e.shiftKey && onMatchingSelect && path) {
+      e.preventDefault()
+      onMatchingSelect()
+      return
+    }
+    onSelect()
+  }
 
   const handleContextMenu = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -42,6 +56,7 @@ export function DestButton({
   const classNames = ['dest-button']
   if (active) classNames.push('active')
   if (lastUsed) classNames.push('last-used')
+  if (matching) classNames.push('matching')
 
   // ツールチップテキスト
   const tooltip = path
@@ -50,7 +65,7 @@ export function DestButton({
 
   return (
     <button
-      onClick={onSelect}
+      onClick={handleClick}
       onContextMenu={handleContextMenu}
       disabled={disabled}
       className={classNames.join(' ')}

@@ -243,6 +243,15 @@ body {
   border-color: var(--success);
 }
 
+.dest-button.matching {
+  border-color: var(--warning);
+  background-color: rgba(255, 152, 0, 0.15);
+}
+
+.dest-button.matching .dest-button-key {
+  background-color: var(--warning);
+}
+
 .dest-button-indicator {
   color: var(--success);
   font-size: 0.5rem;
@@ -460,8 +469,15 @@ body {
   font-size: 0.9rem;
 }
 
-.settings-dest-path {
+.settings-dest-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: hidden;
+}
+
+.settings-dest-path {
   font-size: 0.85rem;
   color: var(--text-secondary);
   overflow: hidden;
@@ -469,8 +485,23 @@ body {
   white-space: nowrap;
 }
 
+.settings-dest-wordlist {
+  font-size: 0.75rem;
+  color: var(--warning);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-dest-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
 .btn-dest-select,
-.btn-dest-clear {
+.btn-dest-clear,
+.btn-wordlist-load,
+.btn-wordlist-clear {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -484,12 +515,19 @@ body {
 }
 
 .btn-dest-select:hover,
-.btn-dest-clear:hover {
+.btn-dest-clear:hover,
+.btn-wordlist-load:hover,
+.btn-wordlist-clear:hover {
   background-color: var(--border);
 }
 
-.btn-dest-clear {
+.btn-dest-clear,
+.btn-wordlist-clear {
   color: var(--error);
+}
+
+.btn-wordlist-load {
+  color: var(--warning);
 }
 
 .settings-hint {
