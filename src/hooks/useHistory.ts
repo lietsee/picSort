@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import type { MoveHistoryItem } from '../types'
 
 const MAX_HISTORY = 50
@@ -44,6 +44,9 @@ interface UseHistoryReturn {
  */
 export function useHistory(): UseHistoryReturn {
   const [state, setState] = useState<HistoryState>(loadFromStorage)
+  // 最新のstateを常に参照できるようにする（クロージャ問題対策）
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   // 履歴変更時に sessionStorage に保存
   useEffect(() => {
@@ -82,27 +85,29 @@ export function useHistory(): UseHistoryReturn {
   }, [])
 
   const undo = useCallback((): MoveHistoryItem | null => {
-    if (!canUndo) return null
+    const current = stateRef.current
+    if (current.currentIndex < 0) return null
 
-    const item = state.history[state.currentIndex]
+    const item = current.history[current.currentIndex]
     setState((prev) => ({
       ...prev,
       currentIndex: prev.currentIndex - 1,
     }))
     return item
-  }, [canUndo, state.currentIndex, state.history])
+  }, [])
 
   const redo = useCallback((): MoveHistoryItem | null => {
-    if (!canRedo) return null
+    const current = stateRef.current
+    if (current.currentIndex >= current.history.length - 1) return null
 
-    const nextIndex = state.currentIndex + 1
-    const item = state.history[nextIndex]
+    const nextIndex = current.currentIndex + 1
+    const item = current.history[nextIndex]
     setState((prev) => ({
       ...prev,
       currentIndex: prev.currentIndex + 1,
     }))
     return item
-  }, [canRedo, state.currentIndex, state.history])
+  }, [])
 
   const clearHistory = useCallback(() => {
     setState({ history: [], currentIndex: -1 })
