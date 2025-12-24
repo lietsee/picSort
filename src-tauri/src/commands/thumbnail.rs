@@ -3,6 +3,7 @@ use sha2::{Sha256, Digest};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use tauri::Manager;
 use tracing::{debug, info, warn};
 
 /// サムネイル生成結果
@@ -36,11 +37,12 @@ fn is_video_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// サムネイルキャッシュディレクトリを取得
-fn get_thumbnail_cache_dir() -> Result<PathBuf, String> {
-    let cache_dir = dirs::cache_dir()
-        .ok_or("Could not determine cache directory")?
-        .join("picsort")
+/// サムネイルキャッシュディレクトリを取得（Tauri の app_cache_dir を使用）
+fn get_thumbnail_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("Could not determine app cache directory: {}", e))?
         .join("thumbnails");
 
     fs::create_dir_all(&cache_dir).map_err(|e| format!("Failed to create cache directory: {}", e))?;
@@ -110,14 +112,14 @@ fn generate_video_thumbnail(src_path: &Path, thumb_path: &Path, size: u32) -> Re
 
 /// サムネイルを生成（キャッシュあり）
 #[tauri::command]
-pub fn generate_thumbnail(path: String, size: u32) -> Result<ThumbnailResult, String> {
+pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Result<ThumbnailResult, String> {
     let src_path = Path::new(&path);
 
     if !src_path.exists() {
         return Err(format!("File not found: {}", path));
     }
 
-    let cache_dir = get_thumbnail_cache_dir()?;
+    let cache_dir = get_thumbnail_cache_dir(&app)?;
     let thumb_filename = get_thumbnail_filename(&path);
     let thumb_path = cache_dir.join(&thumb_filename);
 
@@ -158,12 +160,12 @@ pub fn generate_thumbnail(path: String, size: u32) -> Result<ThumbnailResult, St
 
 /// 複数のサムネイルをバッチ生成
 #[tauri::command]
-pub async fn generate_thumbnails_batch(paths: Vec<String>, size: u32) -> ThumbnailBatchResult {
+pub async fn generate_thumbnails_batch(app: tauri::AppHandle, paths: Vec<String>, size: u32) -> ThumbnailBatchResult {
     let mut results = Vec::new();
     let mut errors = Vec::new();
 
     for path in paths {
-        match generate_thumbnail(path.clone(), size) {
+        match generate_thumbnail(app.clone(), path.clone(), size) {
             Ok(result) => results.push(result),
             Err(e) => {
                 warn!("Failed to generate thumbnail for {}: {}", path, e);
@@ -237,8 +239,8 @@ pub fn move_files_batch(sources: Vec<String>, dest_folder: String) -> Result<Vec
 
 /// サムネイルキャッシュをクリーンアップ
 #[tauri::command]
-pub fn cleanup_thumbnail_cache(max_age_days: u64, _max_size_mb: u64) -> Result<u64, String> {
-    let cache_dir = get_thumbnail_cache_dir()?;
+pub fn cleanup_thumbnail_cache(app: tauri::AppHandle, max_age_days: u64, _max_size_mb: u64) -> Result<u64, String> {
+    let cache_dir = get_thumbnail_cache_dir(&app)?;
 
     if !cache_dir.exists() {
         return Ok(0);
