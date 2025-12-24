@@ -1,9 +1,11 @@
+use once_cell::sync::Lazy;
 use serde::Serialize;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::Manager;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 
 /// サムネイル生成結果
@@ -32,6 +34,15 @@ pub struct ThumbnailError {
 
 const VIDEO_EXTENSIONS: [&str; 6] = ["mp4", "webm", "mov", "mkv", "avi", "ogv"];
 
+/// アプリ全体で共有するキャンセルトークン
+static CANCEL_TOKEN: Lazy<CancellationToken> = Lazy::new(CancellationToken::new);
+
+/// アプリ終了時に呼び出す（lib.rsから）
+pub fn cancel_all_tasks() {
+    info!("Cancelling all thumbnail generation tasks");
+    CANCEL_TOKEN.cancel();
+}
+
 /// 動画ファイルかどうかを判定
 fn is_video_file(path: &Path) -> bool {
     path.extension()
@@ -48,8 +59,9 @@ fn get_thumbnail_cache_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| format!("Could not determine app cache directory: {}", e))?
         .join("thumbnails");
 
-    info!("Thumbnail cache dir: {:?}", cache_dir);
-    fs::create_dir_all(&cache_dir).map_err(|e| format!("Failed to create cache directory: {}", e))?;
+    debug!("Thumbnail cache dir: {:?}", cache_dir);
+    fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("Failed to create cache directory: {}", e))?;
     Ok(cache_dir)
 }
 
@@ -63,12 +75,13 @@ fn get_thumbnail_filename(original_path: &str) -> String {
 
 /// 画像からサムネイルを生成
 fn generate_image_thumbnail(src_path: &Path, thumb_path: &Path, size: u32) -> Result<(), String> {
-    let img = image::open(src_path)
-        .map_err(|e| format!("Failed to open image: {}", e))?;
+    let img =
+        image::open(src_path).map_err(|e| format!("Failed to open image: {}", e))?;
 
     let thumb = img.thumbnail(size, size);
 
-    thumb.save_with_format(thumb_path, image::ImageFormat::Jpeg)
+    thumb
+        .save_with_format(thumb_path, image::ImageFormat::Jpeg)
         .map_err(|e| format!("Failed to save thumbnail: {}", e))?;
 
     Ok(())
@@ -80,12 +93,20 @@ fn generate_video_thumbnail(src_path: &Path, thumb_path: &Path, size: u32) -> Re
     // ffmpegを使用して5秒付近のフレームを抽出
     let output = Command::new("ffmpeg")
         .args([
-            "-y",                           // 上書き確認なし
-            "-ss", "5",                     // 5秒位置にシーク（黒画面回避）
-            "-i", src_path.to_str().unwrap(),
-            "-vf", &format!("scale={}:{}:force_original_aspect_ratio=decrease", size, size),
-            "-frames:v", "1",
-            "-q:v", "2",
+            "-y", // 上書き確認なし
+            "-ss",
+            "5", // 5秒位置にシーク（黒画面回避）
+            "-i",
+            src_path.to_str().unwrap(),
+            "-vf",
+            &format!(
+                "scale={}:{}:force_original_aspect_ratio=decrease",
+                size, size
+            ),
+            "-frames:v",
+            "1",
+            "-q:v",
+            "2",
             thumb_path.to_str().unwrap(),
         ])
         .output()
@@ -96,10 +117,17 @@ fn generate_video_thumbnail(src_path: &Path, thumb_path: &Path, size: u32) -> Re
         let fallback_output = Command::new("ffmpeg")
             .args([
                 "-y",
-                "-i", src_path.to_str().unwrap(),
-                "-vf", &format!("scale={}:{}:force_original_aspect_ratio=decrease", size, size),
-                "-frames:v", "1",
-                "-q:v", "2",
+                "-i",
+                src_path.to_str().unwrap(),
+                "-vf",
+                &format!(
+                    "scale={}:{}:force_original_aspect_ratio=decrease",
+                    size, size
+                ),
+                "-frames:v",
+                "1",
+                "-q:v",
+                "2",
                 thumb_path.to_str().unwrap(),
             ])
             .output()
@@ -114,32 +142,34 @@ fn generate_video_thumbnail(src_path: &Path, thumb_path: &Path, size: u32) -> Re
     Ok(())
 }
 
-/// サムネイルを生成（キャッシュあり）
-#[tauri::command]
-pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Result<ThumbnailResult, String> {
+/// サムネイルを生成（同期版・内部用）
+fn generate_thumbnail_sync(
+    app: &tauri::AppHandle,
+    path: String,
+    size: u32,
+) -> Result<ThumbnailResult, String> {
     let src_path = Path::new(&path);
 
     if !src_path.exists() {
         return Err(format!("File not found: {}", path));
     }
 
-    let cache_dir = get_thumbnail_cache_dir(&app)?;
+    let cache_dir = get_thumbnail_cache_dir(app)?;
     let thumb_filename = get_thumbnail_filename(&path);
     let thumb_path = cache_dir.join(&thumb_filename);
 
     // キャッシュが存在し、元ファイルより新しければ再利用
     if thumb_path.exists() {
-        let orig_modified = fs::metadata(&path)
-            .and_then(|m| m.modified())
-            .ok();
-        let thumb_modified = fs::metadata(&thumb_path)
-            .and_then(|m| m.modified())
-            .ok();
+        let orig_modified = fs::metadata(&path).and_then(|m| m.modified()).ok();
+        let thumb_modified = fs::metadata(&thumb_path).and_then(|m| m.modified()).ok();
 
         if let (Some(orig), Some(thumb)) = (orig_modified, thumb_modified) {
             if thumb > orig {
                 let thumb_path_str = thumb_path.to_string_lossy().to_string();
-                debug!("Using cached thumbnail for: {} -> {}", path, thumb_path_str);
+                debug!(
+                    "Using cached thumbnail for: {} -> {}",
+                    path, thumb_path_str
+                );
                 return Ok(ThumbnailResult {
                     original_path: path,
                     thumbnail_path: thumb_path_str,
@@ -149,7 +179,7 @@ pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Res
     }
 
     // サムネイル生成
-    info!("Generating thumbnail for: {}", path);
+    debug!("Generating thumbnail for: {}", path);
 
     if is_video_file(src_path) {
         generate_video_thumbnail(src_path, &thumb_path, size)?;
@@ -158,21 +188,54 @@ pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Res
     }
 
     let thumb_path_str = thumb_path.to_string_lossy().to_string();
-    info!("Generated thumbnail: {} -> {}", path, thumb_path_str);
+    debug!("Generated thumbnail: {} -> {}", path, thumb_path_str);
     Ok(ThumbnailResult {
         original_path: path,
         thumbnail_path: thumb_path_str,
     })
 }
 
+/// サムネイルを生成（キャッシュあり・非同期版）
+/// バックグラウンドスレッドで実行し、UIをブロックしない
+#[tauri::command]
+pub async fn generate_thumbnail(
+    app: tauri::AppHandle,
+    path: String,
+    size: u32,
+) -> Result<ThumbnailResult, String> {
+    let token = CANCEL_TOKEN.clone();
+
+    // キャンセル済みならすぐにエラーを返す
+    if token.is_cancelled() {
+        return Err("Application is shutting down".to_string());
+    }
+
+    // バックグラウンドスレッドで実行
+    let task = tokio::task::spawn_blocking(move || generate_thumbnail_sync(&app, path, size));
+
+    // キャンセルされた場合は中断
+    tokio::select! {
+        res = task => {
+            res.map_err(|e| format!("Task join error: {}", e))?
+        }
+        _ = token.cancelled() => {
+            Err("Thumbnail generation cancelled".to_string())
+        }
+    }
+}
+
 /// 複数のサムネイルをバッチ生成
 #[tauri::command]
-pub async fn generate_thumbnails_batch(app: tauri::AppHandle, paths: Vec<String>, size: u32) -> ThumbnailBatchResult {
+pub async fn generate_thumbnails_batch(
+    app: tauri::AppHandle,
+    paths: Vec<String>,
+    size: u32,
+) -> ThumbnailBatchResult {
     let mut results = Vec::new();
     let mut errors = Vec::new();
 
     for path in paths {
-        match generate_thumbnail(app.clone(), path.clone(), size) {
+        match generate_thumbnail(app.clone(), path.clone(), size).await {
             Ok(result) => results.push(result),
             Err(e) => {
                 warn!("Failed to generate thumbnail for {}: {}", path, e);
@@ -246,7 +309,11 @@ pub fn move_files_batch(sources: Vec<String>, dest_folder: String) -> Result<Vec
 
 /// サムネイルキャッシュをクリーンアップ
 #[tauri::command]
-pub fn cleanup_thumbnail_cache(app: tauri::AppHandle, max_age_days: u64, _max_size_mb: u64) -> Result<u64, String> {
+pub fn cleanup_thumbnail_cache(
+    app: tauri::AppHandle,
+    max_age_days: u64,
+    _max_size_mb: u64,
+) -> Result<u64, String> {
     let cache_dir = get_thumbnail_cache_dir(&app)?;
 
     if !cache_dir.exists() {

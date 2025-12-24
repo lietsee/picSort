@@ -5,7 +5,8 @@ mod logging;
 use commands::file_ops::{move_file, scan_images, undo_move};
 use commands::watcher::{start_watching, stop_watching, WatcherStateHandle};
 use commands::thumbnail::{
-    cleanup_thumbnail_cache, generate_thumbnail, generate_thumbnails_batch, move_files_batch,
+    cancel_all_tasks, cleanup_thumbnail_cache, generate_thumbnail, generate_thumbnails_batch,
+    move_files_batch,
 };
 use config::settings::{load_settings, save_settings};
 use logging::{get_log_path, init_logging};
@@ -24,6 +25,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(watcher_state)
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                // サムネイル生成タスクをキャンセル
+                cancel_all_tasks();
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             scan_images,
             move_file,
