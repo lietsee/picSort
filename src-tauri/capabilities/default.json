@@ -12,7 +12,7 @@
     {
       "identifier": "fs:allow-read-file",
       "allow": [
-        { "path": "$APPCACHE/**" }
+        { "path": "$APPLOCALDATA/**" }
       ]
     }
   ]
