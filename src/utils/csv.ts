@@ -140,9 +140,10 @@ function createEntry(
 
   // 複数単語の別名から各単語も検索キーに追加
   // 例: "Grace Howard" → ["gracehoward", "grace", "howard"]
+  // 例: "シーザー・キング" → ["シーザーキング", "シーザー", "キング"]
   const MIN_WORD_LENGTH = 4
   for (const alias of aliases) {
-    const words = alias.split(/\s+/)
+    const words = alias.split(/[\s\u3000・•\-－‐]+/)
     if (words.length > 1) {
       for (const word of words) {
         const normalizedWord = normalize(word)
