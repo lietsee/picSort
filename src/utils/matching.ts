@@ -84,6 +84,20 @@ function calculateScore(targetNormalized: string, keyNormalized: string): number
 }
 
 // =========================
+// ヘルパー関数
+// =========================
+
+/**
+ * CJK文字（漢字・ひらがな・カタカナ）を含むかどうか判定
+ */
+function isCJK(str: string): boolean {
+  // ひらがな: U+3040-U+309F
+  // カタカナ: U+30A0-U+30FF
+  // CJK統合漢字: U+4E00-U+9FFF
+  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(str)
+}
+
+// =========================
 // マッチングルール
 // =========================
 
@@ -112,7 +126,9 @@ function ruleB(
 ): MatchItem | null {
   // 部分一致
   for (const key of entry.searchKeysNormalized) {
-    if (key.length >= config.partialMatchMinLen && targetNormalized.includes(key)) {
+    // CJK文字を含む場合は最小長1、それ以外は設定値(4)
+    const minLen = isCJK(key) ? 1 : config.partialMatchMinLen
+    if (key.length >= minLen && targetNormalized.includes(key)) {
       return {
         entityId: `${entry.type}:${entry.canonical}`,
         type: entry.type,
