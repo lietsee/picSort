@@ -8,6 +8,7 @@ use tracing::{debug, info, warn};
 
 /// サムネイル生成結果
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ThumbnailResult {
     pub original_path: String,
     pub thumbnail_path: String,
@@ -15,6 +16,7 @@ pub struct ThumbnailResult {
 
 /// バッチ生成結果
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ThumbnailBatchResult {
     pub results: Vec<ThumbnailResult>,
     pub errors: Vec<ThumbnailError>,
@@ -22,6 +24,7 @@ pub struct ThumbnailBatchResult {
 
 /// サムネイル生成エラー
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ThumbnailError {
     pub path: String,
     pub error: String,
