@@ -32,6 +32,10 @@ const initialState: AppState = {
   lastUsedDestination: null,
   status: 'idle',
   statusMessage: '',
+  // Grid mode state
+  viewMode: 'single',
+  selectedPaths: [],
+  lastSelectedIndex: null,
 }
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -154,6 +158,78 @@ function appReducer(state: AppState, action: AppAction): AppState {
         status: action.payload.status,
         statusMessage: action.payload.message || '',
       }
+
+    // Grid mode actions
+    case 'SET_VIEW_MODE':
+      return {
+        ...state,
+        viewMode: action.payload,
+      }
+
+    case 'TOGGLE_VIEW_MODE':
+      return {
+        ...state,
+        viewMode: state.viewMode === 'single' ? 'grid' : 'single',
+        selectedPaths: [], // Clear selection when switching modes
+        lastSelectedIndex: null,
+      }
+
+    case 'SELECT_SINGLE':
+      return {
+        ...state,
+        selectedPaths: [action.payload],
+        lastSelectedIndex: state.images.findIndex(img => img.path === action.payload),
+      }
+
+    case 'TOGGLE_SELECTION': {
+      const path = action.payload
+      const isSelected = state.selectedPaths.includes(path)
+      return {
+        ...state,
+        selectedPaths: isSelected
+          ? state.selectedPaths.filter(p => p !== path)
+          : [...state.selectedPaths, path],
+        lastSelectedIndex: state.images.findIndex(img => img.path === path),
+      }
+    }
+
+    case 'SELECT_RANGE': {
+      const { fromIndex, toIndex } = action.payload
+      const start = Math.min(fromIndex, toIndex)
+      const end = Math.max(fromIndex, toIndex)
+      const rangePaths = state.images.slice(start, end + 1).map(img => img.path)
+      return {
+        ...state,
+        selectedPaths: rangePaths,
+        lastSelectedIndex: toIndex,
+      }
+    }
+
+    case 'SELECT_ALL':
+      return {
+        ...state,
+        selectedPaths: state.images.map(img => img.path),
+        lastSelectedIndex: state.images.length - 1,
+      }
+
+    case 'CLEAR_SELECTION':
+      return {
+        ...state,
+        selectedPaths: [],
+        lastSelectedIndex: null,
+      }
+
+    case 'REMOVE_SELECTED_IMAGES': {
+      const newImages = state.images.filter(img => !state.selectedPaths.includes(img.path))
+      const newIndex = Math.min(state.currentIndex, newImages.length - 1)
+      return {
+        ...state,
+        images: newImages,
+        currentIndex: Math.max(0, newIndex),
+        selectedPaths: [],
+        lastSelectedIndex: null,
+      }
+    }
 
     default:
       return state

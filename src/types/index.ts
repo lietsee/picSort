@@ -21,6 +21,8 @@ export interface Settings {
 
 export type Status = 'idle' | 'loading' | 'success' | 'error' | 'warning'
 
+export type ViewMode = 'single' | 'grid'
+
 export interface AppState {
   sourceFolder: string | null
   images: ImageInfo[]
@@ -29,6 +31,10 @@ export interface AppState {
   lastUsedDestination: string | null
   status: Status
   statusMessage: string
+  // Grid mode state
+  viewMode: ViewMode
+  selectedPaths: string[]
+  lastSelectedIndex: number | null
 }
 
 // Undo/Redo履歴アイテム
@@ -38,6 +44,22 @@ export interface MoveHistoryItem {
   sourceFolder: string    // 元のフォルダパス（Undo時に使用）
   destPath: string        // 移動先ファイルパス（フルパス）
   timestamp: number
+}
+
+// Thumbnail types
+export interface ThumbnailResult {
+  originalPath: string
+  thumbnailPath: string
+}
+
+export interface ThumbnailBatchResult {
+  results: ThumbnailResult[]
+  errors: ThumbnailError[]
+}
+
+export interface ThumbnailError {
+  path: string
+  error: string
 }
 
 export type AppAction =
@@ -51,3 +73,12 @@ export type AppAction =
   | { type: 'SET_DESTINATION'; payload: { key: string; path: string | null } }
   | { type: 'SET_LAST_USED_DESTINATION'; payload: string }
   | { type: 'SET_STATUS'; payload: { status: Status; message?: string } }
+  // Grid mode actions
+  | { type: 'SET_VIEW_MODE'; payload: ViewMode }
+  | { type: 'TOGGLE_VIEW_MODE' }
+  | { type: 'SELECT_SINGLE'; payload: string }
+  | { type: 'TOGGLE_SELECTION'; payload: string }
+  | { type: 'SELECT_RANGE'; payload: { fromIndex: number; toIndex: number } }
+  | { type: 'SELECT_ALL' }
+  | { type: 'CLEAR_SELECTION' }
+  | { type: 'REMOVE_SELECTED_IMAGES' }

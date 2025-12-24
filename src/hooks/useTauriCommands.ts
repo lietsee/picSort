@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import type { ImageInfo, Settings } from '../types'
+import type { ImageInfo, Settings, ThumbnailResult, ThumbnailBatchResult } from '../types'
 
 export function useTauriCommands() {
   const scanImages = async (path: string): Promise<ImageInfo[]> => {
@@ -37,6 +37,31 @@ export function useTauriCommands() {
     return await invoke<string>('get_log_path')
   }
 
+  const generateThumbnail = async (path: string, size: number): Promise<ThumbnailResult> => {
+    return await invoke<ThumbnailResult>('generate_thumbnail', { path, size })
+  }
+
+  const generateThumbnailsBatch = async (
+    paths: string[],
+    size: number
+  ): Promise<ThumbnailBatchResult> => {
+    return await invoke<ThumbnailBatchResult>('generate_thumbnails_batch', { paths, size })
+  }
+
+  const moveFilesBatch = async (
+    sources: string[],
+    destFolder: string
+  ): Promise<string[]> => {
+    return await invoke<string[]>('move_files_batch', { sources, destFolder })
+  }
+
+  const cleanupThumbnailCache = async (
+    maxAgeDays: number,
+    maxSizeMb: number
+  ): Promise<number> => {
+    return await invoke<number>('cleanup_thumbnail_cache', { maxAgeDays, maxSizeMb })
+  }
+
   return {
     scanImages,
     moveFile,
@@ -46,5 +71,9 @@ export function useTauriCommands() {
     startWatching,
     stopWatching,
     getLogPath,
+    generateThumbnail,
+    generateThumbnailsBatch,
+    moveFilesBatch,
+    cleanupThumbnailCache,
   }
 }

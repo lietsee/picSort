@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import type { ViewMode } from '../types'
 
 interface UseKeyboardOptions {
   onMove: (key: string) => void
@@ -8,6 +9,13 @@ interface UseKeyboardOptions {
   onUndo?: () => void
   onRedo?: () => void
   isVideo?: boolean // 動画再生中は矢印キーのナビゲーションをスキップ
+  // Grid mode options
+  viewMode?: ViewMode
+  selectedCount?: number
+  onToggleViewMode?: () => void
+  onSelectAll?: () => void
+  onClearSelection?: () => void
+  onMoveSelected?: (key: string) => void
 }
 
 export function useKeyboard({
@@ -18,6 +26,13 @@ export function useKeyboard({
   onUndo,
   onRedo,
   isVideo = false,
+  // Grid mode options
+  viewMode = 'single',
+  selectedCount = 0,
+  onToggleViewMode,
+  onSelectAll,
+  onClearSelection,
+  onMoveSelected,
 }: UseKeyboardOptions) {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -59,7 +74,42 @@ export function useKeyboard({
         return
       }
 
-      // 数字キー（1-9, 0）: 仕分け（リピート無効）
+      // G キー: ビューモード切替
+      if (key === 'g' || key === 'G') {
+        if (event.repeat) return
+        onToggleViewMode?.()
+        return
+      }
+
+      // グリッドモード固有のショートカット
+      if (viewMode === 'grid') {
+        // Escape: 選択解除
+        if (key === 'Escape') {
+          onClearSelection?.()
+          return
+        }
+
+        // Ctrl+A / Cmd+A: 全選択
+        if (key === 'a' && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault()
+          onSelectAll?.()
+          return
+        }
+
+        // 数字キー: 選択ファイルを仕分け
+        if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
+          if (event.repeat) return
+          if (selectedCount > 0) {
+            onMoveSelected?.(key)
+          }
+          return
+        }
+
+        // グリッドモードではナビゲーションをスキップ
+        return
+      }
+
+      // シングルモード: 数字キー（1-9, 0）: 仕分け（リピート無効）
       if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(key)) {
         if (event.repeat) return // キーリピート無効
         onMove(key)
@@ -97,7 +147,7 @@ export function useKeyboard({
         return
       }
     },
-    [onMove, onNavigate, onToggleFullscreen, onOpenSettings, onUndo, onRedo, isVideo]
+    [onMove, onNavigate, onToggleFullscreen, onOpenSettings, onUndo, onRedo, isVideo, viewMode, selectedCount, onToggleViewMode, onSelectAll, onClearSelection, onMoveSelected]
   )
 
   useEffect(() => {

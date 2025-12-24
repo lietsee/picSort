@@ -12,6 +12,7 @@ import { useHistory } from './hooks/useHistory'
 import { Header } from './components/Header'
 import { DestButton } from './components/DestButton'
 import { MediaViewer } from './components/MediaViewer'
+import { ThumbnailGrid } from './components/ThumbnailGrid'
 import { StatusBar } from './components/StatusBar'
 import { WelcomeModal } from './components/WelcomeModal'
 import { SettingsModal } from './components/SettingsModal'
@@ -27,7 +28,7 @@ interface FsChangeEvent {
 function AppContent() {
   const { state, dispatch } = useApp()
   const { t } = useLanguage()
-  const { scanImages, moveFile, undoMove, loadSettings, saveSettings, startWatching } = useTauriCommands()
+  const { scanImages, moveFile, undoMove, loadSettings, saveSettings, startWatching, moveFilesBatch } = useTauriCommands()
   const { addToHistory, undo, redo, canUndo, canRedo } = useHistory()
   const configPathRef = useRef<string | null>(null)
   const isInitializedRef = useRef(false)
@@ -521,6 +522,69 @@ function AppContent() {
     }
   }, [canRedo, redo, moveFile, scanImages, state.sourceFolder, state.images, state.currentIndex, dispatch, t])
 
+  // Grid mode handlers
+  const handleToggleViewMode = useCallback(() => {
+    dispatch({ type: 'TOGGLE_VIEW_MODE' })
+  }, [dispatch])
+
+  const handleSelectImage = useCallback((path: string, modifiers: { ctrl: boolean; shift: boolean }) => {
+    if (modifiers.shift && state.lastSelectedIndex !== null) {
+      const clickedIndex = state.images.findIndex(img => img.path === path)
+      dispatch({
+        type: 'SELECT_RANGE',
+        payload: { fromIndex: state.lastSelectedIndex, toIndex: clickedIndex }
+      })
+    } else if (modifiers.ctrl) {
+      dispatch({ type: 'TOGGLE_SELECTION', payload: path })
+    } else {
+      dispatch({ type: 'SELECT_SINGLE', payload: path })
+    }
+  }, [dispatch, state.lastSelectedIndex, state.images])
+
+  const handleDoubleClickThumbnail = useCallback((path: string) => {
+    const index = state.images.findIndex(img => img.path === path)
+    dispatch({ type: 'SET_CURRENT_INDEX', payload: index })
+    dispatch({ type: 'SET_VIEW_MODE', payload: 'single' })
+  }, [dispatch, state.images])
+
+  const handleMoveSelected = useCallback(async (key: string) => {
+    if (state.selectedPaths.length === 0) return
+
+    const destination = state.destinations[key]
+    if (!destination) {
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'error', message: t('status.destNotSet', { key }) }
+      })
+      return
+    }
+
+    try {
+      const destPaths = await moveFilesBatch(state.selectedPaths, destination)
+
+      // 履歴に追加
+      state.selectedPaths.forEach((sourcePath, i) => {
+        const sourceFolder = state.sourceFolder!
+        addToHistory({ sourcePath, sourceFolder, destPath: destPaths[i] })
+      })
+
+      dispatch({ type: 'REMOVE_SELECTED_IMAGES' })
+      dispatch({ type: 'SET_LAST_USED_DESTINATION', payload: key })
+      dispatch({
+        type: 'SET_STATUS',
+        payload: {
+          status: 'success',
+          message: t('status.filesMoved', { count: state.selectedPaths.length })
+        }
+      })
+    } catch (error) {
+      dispatch({
+        type: 'SET_STATUS',
+        payload: { status: 'error', message: t('status.moveError', { error: String(error) }) }
+      })
+    }
+  }, [state.selectedPaths, state.destinations, state.sourceFolder, moveFilesBatch, dispatch, t, addToHistory])
+
   useKeyboard({
     onMove: handleMove,
     onNavigate: handleNavigate,
@@ -529,6 +593,13 @@ function AppContent() {
     onUndo: handleUndo,
     onRedo: handleRedo,
     isVideo,
+    // Grid mode options
+    viewMode: state.viewMode,
+    selectedCount: state.selectedPaths.length,
+    onToggleViewMode: handleToggleViewMode,
+    onSelectAll: () => dispatch({ type: 'SELECT_ALL' }),
+    onClearSelection: () => dispatch({ type: 'CLEAR_SELECTION' }),
+    onMoveSelected: handleMoveSelected,
   })
 
   const displayIndex = state.images.length > 0 ? state.currentIndex + 1 : 0
@@ -559,31 +630,50 @@ function AppContent() {
       />
 
       <main className="app-main">
-        <MediaViewer
-          media={currentImage}
-          nextMedia={nextImage}
-          loading={state.status === 'loading'}
-          onNavigate={handleNavigate}
-          onIsVideoChange={setIsVideo}
-        />
+        {state.viewMode === 'single' ? (
+          <>
+            <MediaViewer
+              media={currentImage}
+              nextMedia={nextImage}
+              loading={state.status === 'loading'}
+              onNavigate={handleNavigate}
+              onIsVideoChange={setIsVideo}
+            />
 
-        {state.images.length > 0 && (
-          <div className="nav-buttons">
-            <button
-              onClick={() => handleNavigate('prev')}
-              disabled={state.currentIndex === 0}
-            >
-              {t('navigation.prev')}
-            </button>
-            <button
-              onClick={() => handleNavigate('next')}
-              disabled={state.currentIndex >= state.images.length - 1}
-            >
-              {t('navigation.next')}
-            </button>
-          </div>
+            {state.images.length > 0 && (
+              <div className="nav-buttons">
+                <button
+                  onClick={() => handleNavigate('prev')}
+                  disabled={state.currentIndex === 0}
+                >
+                  {t('navigation.prev')}
+                </button>
+                <button
+                  onClick={() => handleNavigate('next')}
+                  disabled={state.currentIndex >= state.images.length - 1}
+                >
+                  {t('navigation.next')}
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <ThumbnailGrid
+            images={state.images}
+            selectedPaths={state.selectedPaths}
+            onSelect={handleSelectImage}
+            onDoubleClick={handleDoubleClickThumbnail}
+            thumbnailSize={200}
+          />
         )}
       </main>
+
+      {/* 選択数バッジ（グリッドモード時のみ） */}
+      {state.viewMode === 'grid' && state.selectedPaths.length > 0 && (
+        <div className="selection-badge">
+          {t('grid.selectedCount', { count: state.selectedPaths.length })}
+        </div>
+      )}
 
       <aside className="app-sidebar">
         {(['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] as const).map((key) => (

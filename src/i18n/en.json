@@ -28,6 +28,7 @@
     "scanning": "Scanning...",
     "imagesLoaded": "Loaded {{count}} images",
     "fileMoved": "File moved",
+    "filesMoved": "{{count}} files moved",
     "moveError": "Move error: {{error}}",
     "error": "Error: {{error}}",
     "destNotSet": "Destination {{key}} is not set",
@@ -37,6 +38,10 @@
     "undoError": "Undo failed: {{error}}",
     "redone": "Redone",
     "redoError": "Redo failed: {{error}}"
+  },
+  "grid": {
+    "selectedCount": "{{count}} selected",
+    "noImages": "No images"
   },
   "settings": {
     "title": "Settings",

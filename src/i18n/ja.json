@@ -28,6 +28,7 @@
     "scanning": "スキャン中...",
     "imagesLoaded": "{{count}}枚の画像を読み込みました",
     "fileMoved": "ファイルを移動しました",
+    "filesMoved": "{{count}}件のファイルを移動しました",
     "moveError": "移動エラー: {{error}}",
     "error": "エラー: {{error}}",
     "destNotSet": "分別先{{key}}が設定されていません",
@@ -37,6 +38,10 @@
     "undoError": "元に戻せませんでした: {{error}}",
     "redone": "やり直しました",
     "redoError": "やり直せませんでした: {{error}}"
+  },
+  "grid": {
+    "selectedCount": "{{count}}件選択中",
+    "noImages": "画像がありません"
   },
   "settings": {
     "title": "設定",
