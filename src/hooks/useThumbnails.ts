@@ -7,12 +7,22 @@ interface ThumbnailCacheEntry {
   lastAccessed: number
 }
 
-const MAX_CACHE_SIZE = 200
+interface QueueResolver {
+  resolve: (url: string) => void
+  reject: (err: Error) => void
+}
+
+const MAX_CACHE_SIZE = 500
+const MAX_CONCURRENT = 6
 
 export function useThumbnails(thumbnailSize: number = 200) {
   const { generateThumbnail } = useTauriCommands()
   const cacheRef = useRef<Map<string, ThumbnailCacheEntry>>(new Map())
   const pendingRef = useRef<Map<string, Promise<string>>>(new Map())
+  const queueRef = useRef<string[]>([])
+  const activeCountRef = useRef(0)
+  const resolversRef = useRef<Map<string, QueueResolver>>(new Map())
+  const processingRef = useRef(false)
 
   // LRUキャッシュから古いエントリを削除
   const evictOldEntries = useCallback(() => {
@@ -28,6 +38,66 @@ export function useThumbnails(thumbnailSize: number = 200) {
       cache.delete(key)
     }
   }, [])
+
+  // キューから1件処理
+  const processOne = useCallback(async () => {
+    const path = queueRef.current.shift()
+    if (!path) return false
+
+    const resolver = resolversRef.current.get(path)
+    if (!resolver) return true // 次へ進む
+
+    activeCountRef.current++
+
+    try {
+      const result = await generateThumbnail(path, thumbnailSize)
+      const thumbnailUrl = convertFileSrc(result.thumbnailPath)
+
+      cacheRef.current.set(path, {
+        thumbnailUrl,
+        lastAccessed: Date.now(),
+      })
+      evictOldEntries()
+
+      resolver.resolve(thumbnailUrl)
+    } catch (err) {
+      resolver.reject(err as Error)
+    } finally {
+      activeCountRef.current--
+      resolversRef.current.delete(path)
+      pendingRef.current.delete(path)
+    }
+
+    return true
+  }, [generateThumbnail, thumbnailSize, evictOldEntries])
+
+  // キュー処理ループ（非同期で並列実行）
+  const processQueue = useCallback(() => {
+    // 既に処理中の場合はスキップ（再帰的に呼ばれる）
+    if (processingRef.current) return
+    processingRef.current = true
+
+    const runLoop = async () => {
+      while (queueRef.current.length > 0 && activeCountRef.current < MAX_CONCURRENT) {
+        // 同時に複数起動
+        const slots = MAX_CONCURRENT - activeCountRef.current
+        const batch = Math.min(slots, queueRef.current.length)
+
+        const promises: Promise<boolean>[] = []
+        for (let i = 0; i < batch; i++) {
+          promises.push(processOne())
+        }
+
+        // 最初の1つが完了するまで待機
+        if (promises.length > 0) {
+          await Promise.race(promises)
+        }
+      }
+      processingRef.current = false
+    }
+
+    runLoop()
+  }, [processOne])
 
   // サムネイルを取得（キャッシュあり）
   const requestThumbnail = useCallback(async (path: string): Promise<string> => {
@@ -47,29 +117,19 @@ export function useThumbnails(thumbnailSize: number = 200) {
       return pendingRequest
     }
 
-    // 新しいリクエストを作成
-    const request = (async () => {
-      try {
-        const result = await generateThumbnail(path, thumbnailSize)
-        const thumbnailUrl = convertFileSrc(result.thumbnailPath)
+    // 新しいPromiseを作成してキューに追加
+    const promise = new Promise<string>((resolve, reject) => {
+      resolversRef.current.set(path, { resolve, reject })
+      queueRef.current.push(path)
+    })
 
-        // キャッシュに追加
-        cache.set(path, {
-          thumbnailUrl,
-          lastAccessed: Date.now(),
-        })
+    pending.set(path, promise)
 
-        evictOldEntries()
+    // キュー処理を開始
+    processQueue()
 
-        return thumbnailUrl
-      } finally {
-        pending.delete(path)
-      }
-    })()
-
-    pending.set(path, request)
-    return request
-  }, [generateThumbnail, thumbnailSize, evictOldEntries])
+    return promise
+  }, [processQueue])
 
   // キャッシュからサムネイルURLを取得（同期版、なければnull）
   const getCachedThumbnail = useCallback((path: string): string | null => {
@@ -85,6 +145,8 @@ export function useThumbnails(thumbnailSize: number = 200) {
   const clearCache = useCallback(() => {
     cacheRef.current.clear()
     pendingRef.current.clear()
+    queueRef.current = []
+    resolversRef.current.clear()
   }, [])
 
   return {
