@@ -4,16 +4,16 @@ import type { MoveHistoryItem } from '../types'
 const MAX_HISTORY = 50
 const STORAGE_KEY = 'picsort_history'
 
-interface StoredHistory {
+interface HistoryState {
   history: MoveHistoryItem[]
   currentIndex: number
 }
 
-function loadFromStorage(): StoredHistory {
+function loadFromStorage(): HistoryState {
   try {
     const saved = sessionStorage.getItem(STORAGE_KEY)
     if (saved) {
-      const parsed = JSON.parse(saved) as StoredHistory
+      const parsed = JSON.parse(saved) as HistoryState
       return {
         history: parsed.history || [],
         currentIndex: parsed.currentIndex ?? -1,
@@ -38,22 +38,24 @@ interface UseHistoryReturn {
 /**
  * Undo/Redo履歴を管理するフック
  * sessionStorage に履歴を永続化
+ *
+ * 注意: historyとcurrentIndexを単一のstateで管理することで、
+ * ループ内で複数回addToHistoryが呼ばれた場合も正しく動作する
  */
 export function useHistory(): UseHistoryReturn {
-  const [history, setHistory] = useState<MoveHistoryItem[]>(() => loadFromStorage().history)
-  const [currentIndex, setCurrentIndex] = useState(() => loadFromStorage().currentIndex)
+  const [state, setState] = useState<HistoryState>(loadFromStorage)
 
   // 履歴変更時に sessionStorage に保存
   useEffect(() => {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ history, currentIndex }))
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
     } catch {
       // 保存失敗は無視（容量超過など）
     }
-  }, [history, currentIndex])
+  }, [state])
 
-  const canUndo = currentIndex >= 0
-  const canRedo = currentIndex < history.length - 1
+  const canUndo = state.currentIndex >= 0
+  const canRedo = state.currentIndex < state.history.length - 1
 
   const addToHistory = useCallback((item: Omit<MoveHistoryItem, 'id' | 'timestamp'>) => {
     const newItem: MoveHistoryItem = {
@@ -62,45 +64,52 @@ export function useHistory(): UseHistoryReturn {
       timestamp: Date.now(),
     }
 
-    setHistory((prev) => {
+    setState((prev) => {
       // 現在位置より後の履歴を削除（新しい操作があった場合）
-      const newHistory = prev.slice(0, currentIndex + 1)
+      const newHistory = prev.history.slice(0, prev.currentIndex + 1)
       newHistory.push(newItem)
 
       // 最大履歴数を超えたら古いものを削除
-      if (newHistory.length > MAX_HISTORY) {
-        return newHistory.slice(-MAX_HISTORY)
-      }
-      return newHistory
-    })
+      const trimmedHistory = newHistory.length > MAX_HISTORY
+        ? newHistory.slice(-MAX_HISTORY)
+        : newHistory
 
-    setCurrentIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1))
-  }, [currentIndex])
+      return {
+        history: trimmedHistory,
+        currentIndex: Math.min(prev.currentIndex + 1, MAX_HISTORY - 1),
+      }
+    })
+  }, [])
 
   const undo = useCallback((): MoveHistoryItem | null => {
     if (!canUndo) return null
 
-    const item = history[currentIndex]
-    setCurrentIndex((prev) => prev - 1)
+    const item = state.history[state.currentIndex]
+    setState((prev) => ({
+      ...prev,
+      currentIndex: prev.currentIndex - 1,
+    }))
     return item
-  }, [canUndo, currentIndex, history])
+  }, [canUndo, state.currentIndex, state.history])
 
   const redo = useCallback((): MoveHistoryItem | null => {
     if (!canRedo) return null
 
-    const nextIndex = currentIndex + 1
-    const item = history[nextIndex]
-    setCurrentIndex(nextIndex)
+    const nextIndex = state.currentIndex + 1
+    const item = state.history[nextIndex]
+    setState((prev) => ({
+      ...prev,
+      currentIndex: prev.currentIndex + 1,
+    }))
     return item
-  }, [canRedo, currentIndex, history])
+  }, [canRedo, state.currentIndex, state.history])
 
   const clearHistory = useCallback(() => {
-    setHistory([])
-    setCurrentIndex(-1)
+    setState({ history: [], currentIndex: -1 })
   }, [])
 
   // 現在のポインター以降の有効な履歴のみ返す
-  const visibleHistory = history.slice(0, currentIndex + 1)
+  const visibleHistory = state.history.slice(0, state.currentIndex + 1)
 
   return {
     history: visibleHistory,
