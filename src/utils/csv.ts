@@ -137,6 +137,22 @@ function createEntry(
 
   // 検索キー（重複除去）
   const searchKeysSet = new Set<string>([canonicalNormalized, ...aliasesNormalized])
+
+  // 複数単語の別名から各単語も検索キーに追加
+  // 例: "Grace Howard" → ["gracehoward", "grace", "howard"]
+  const MIN_WORD_LENGTH = 4
+  for (const alias of aliases) {
+    const words = alias.split(/\s+/)
+    if (words.length > 1) {
+      for (const word of words) {
+        const normalizedWord = normalize(word)
+        if (normalizedWord.length >= MIN_WORD_LENGTH) {
+          searchKeysSet.add(normalizedWord)
+        }
+      }
+    }
+  }
+
   const searchKeysNormalized = Array.from(searchKeysSet).filter((k) => k.length > 0)
 
   return {
